@@ -1,0 +1,2340 @@
+1
+00:00:00,000 --> 00:00:04,480
+ Hi everyone. Today we are continuing our implementation of Makemore, our favorite
+
+2
+00:00:04,480 --> 00:00:08,640
+ character level language model. Now you'll notice that the background behind me is different,
+
+3
+00:00:08,640 --> 00:00:12,480
+ that's because I am in Kyoto and it is awesome. So I'm in a hotel room here.
+
+4
+00:00:12,480 --> 00:00:18,160
+ Now over the last few lectures we've built up to this architecture that is a multi-layer
+
+5
+00:00:18,160 --> 00:00:22,720
+ perceptron character level language model. So we see that it receives three previous characters
+
+6
+00:00:22,720 --> 00:00:27,520
+ and tries to predict the fourth character in a sequence using a very simple multi-layer perceptron
+
+7
+00:00:27,520 --> 00:00:32,720
+ using one hidden layer of neurons with tenational nearities. So what we'd like to do now in this
+
+8
+00:00:32,720 --> 00:00:37,920
+ lecture is I'd like to complexify this architecture. In particular we would like to take more characters
+
+9
+00:00:37,920 --> 00:00:42,800
+ in a sequence as an input, not just three. And in addition to that we don't just want to feed them
+
+10
+00:00:42,800 --> 00:00:48,160
+ all into a single hidden layer because that squashes too much information too quickly. Instead we would
+
+11
+00:00:48,160 --> 00:00:53,440
+ like to make a deeper model that progressively fuses this information to make its guess about
+
+12
+00:00:53,440 --> 00:00:59,280
+ the next character in a sequence. And so we'll see that as we make this architecture more complex
+
+13
+00:00:59,280 --> 00:01:02,800
+ we're actually going to arrive at something that looks very much like a weight net.
+
+14
+00:01:02,800 --> 00:01:10,960
+ So weight net is this paper published by Define in 2016 and it is also a language model basically
+
+15
+00:01:10,960 --> 00:01:16,320
+ but a try to predict audio sequences instead of character level sequences or word level sequences.
+
+16
+00:01:16,320 --> 00:01:22,400
+ But fundamentally the modeling setup is identical. It is an autoregressive model
+
+17
+00:01:22,400 --> 00:01:26,320
+ and it tries to predict the next character in a sequence and the architecture actually takes
+
+18
+00:01:26,320 --> 00:01:31,840
+ this interesting hierarchical sort of approach to predicting the next character in a sequence
+
+19
+00:01:31,840 --> 00:01:37,760
+ with this tree-like structure. And this is the architecture and we're going to implement it
+
+20
+00:01:37,760 --> 00:01:43,280
+ in the course of this video. So let's get started. So the story code for part five is very similar
+
+21
+00:01:43,280 --> 00:01:48,640
+ to where we ended up in part three. Recall that part four was the manual dot replication exercise
+
+22
+00:01:48,640 --> 00:01:53,360
+ that is kind of an aside. So we are coming back to part three, copy-pasting chunks out of it
+
+23
+00:01:53,360 --> 00:01:57,440
+ and that is our starter code for part five. I've changed very few things otherwise.
+
+24
+00:01:57,440 --> 00:02:01,520
+ So a lot of this should look familiar to if you've gone through part three. So in particular,
+
+25
+00:02:01,520 --> 00:02:08,480
+ very briefly we are doing imports, we are reading our data set of words and we are processing the
+
+26
+00:02:08,480 --> 00:02:13,760
+ data set of words into individual examples and none of this data generation code has changed.
+
+27
+00:02:13,760 --> 00:02:20,640
+ And basically we have lots and lots of examples. In particular, we have 182,000 examples of three
+
+28
+00:02:20,640 --> 00:02:25,920
+ characters trying to predict the fourth one. And we've broken up every one of these words into
+
+29
+00:02:25,920 --> 00:02:30,320
+ little problems of giving three characters predict the fourth one. So this is our data set and this
+
+30
+00:02:30,320 --> 00:02:36,080
+ is where we're trying to get the neural lab to do. Now in part three, we started to develop our code
+
+31
+00:02:36,080 --> 00:02:42,720
+ around these layer modules that are, for example, a class linear. And we're doing this because we
+
+32
+00:02:42,720 --> 00:02:48,560
+ want to think of these modules as building blocks and like a Lego building block bricks that we can
+
+33
+00:02:48,560 --> 00:02:53,280
+ sort of like stack up into neural networks. And we can feed data between these layers and stack
+
+34
+00:02:53,280 --> 00:03:00,960
+ them up into sort of graphs. Now we also developed these layers to have APIs and signatures very
+
+35
+00:03:00,960 --> 00:03:05,920
+ similar to those that are found in PyTorch. So we have Torched.nn and it's got all these layer
+
+36
+00:03:05,920 --> 00:03:10,080
+ building blocks that you would use in practice. And we were developing all of these to mimic
+
+37
+00:03:10,080 --> 00:03:15,920
+ APIs of these. So for example, we have linear. So there will also be a Torched.nn.linear
+
+38
+00:03:15,920 --> 00:03:20,720
+ and its signature will be very similar to our signature. And the functionality will be also
+
+39
+00:03:20,720 --> 00:03:25,360
+ quite identical as far as I'm aware. So we had the linear layer with the Batchroom 1D layer
+
+40
+00:03:25,360 --> 00:03:31,920
+ and the 10H layer that we developed previously. And linear just does a matrix multiply in the
+
+41
+00:03:31,920 --> 00:03:37,680
+ forward pass of this module. Batchroom, of course, is this crazy layer that we developed in the previous
+
+42
+00:03:37,680 --> 00:03:43,760
+ lecture. And what's crazy about it is, well, there's many things. Number one, it has these running
+
+43
+00:03:43,760 --> 00:03:49,920
+ mean and variances that are trained outside of back propagation. We are trained using exponential
+
+44
+00:03:49,920 --> 00:03:55,600
+ moving average inside this layer when we called forward pass. In addition to that,
+
+45
+00:03:55,600 --> 00:04:00,480
+ there's this training plug because the behavior of Batchroom is different during train time
+
+46
+00:04:00,480 --> 00:04:04,640
+ and evaluation time. And so suddenly we have to be very careful that Batchroom is in its correct
+
+47
+00:04:04,640 --> 00:04:09,200
+ state, that it's in the evaluation state or training state. So that's something to now keep track of
+
+48
+00:04:09,200 --> 00:04:13,840
+ something that sometimes introduces bugs because you forget to put it into the right mode.
+
+49
+00:04:13,840 --> 00:04:20,240
+ And finally, we saw that Batchroom couples the statistics or the activations across the examples
+
+50
+00:04:20,240 --> 00:04:26,880
+ in the batch. So normally we thought of the batch as just an efficiency thing. But now we are
+
+51
+00:04:26,880 --> 00:04:31,360
+ coupling the computation across batch elements. And it's done for the purposes of controlling
+
+52
+00:04:31,360 --> 00:04:36,400
+ the activation statistics as we saw in the previous video. So it's a very weird layer,
+
+53
+00:04:36,400 --> 00:04:41,360
+ at least a lot of bugs. Partly, for example, because you have to modulate the training in
+
+54
+00:04:41,360 --> 00:04:49,040
+ eval phase and so on. In addition, for example, you have to wait for the mean and variance to
+
+55
+00:04:49,040 --> 00:04:54,560
+ settle and to actually reach a steady state. And so you have to make sure that you basically
+
+56
+00:04:54,560 --> 00:05:02,800
+ there's state in this layer and state is harmful, usually. Now, I brought out the generator object.
+
+57
+00:05:02,800 --> 00:05:08,000
+ Previously, we had a generator equals g and so on inside these layers. I've discarded that in favor
+
+58
+00:05:08,000 --> 00:05:15,920
+ of just initializing the torch RNG outside here just once globally, just for simplicity.
+
+59
+00:05:15,920 --> 00:05:20,720
+ And then here we are starting to build out some of the neural elements. This should look very
+
+60
+00:05:20,720 --> 00:05:26,800
+ familiar. We are we have our embedding table C, and then we have a list of players. And it's a
+
+61
+00:05:26,800 --> 00:05:32,880
+ linear feeds to batch or feeds to 10H. And then a linear output layer and its weights are scaled
+
+62
+00:05:32,880 --> 00:05:38,400
+ down. So we are not confidently wrong at initialization. We see that this is about 12,000 parameters.
+
+63
+00:05:38,400 --> 00:05:44,400
+ We're telling pators that the parameters require gradients. The optimization is as far as I'm
+
+64
+00:05:44,400 --> 00:05:51,040
+ aware, identical and should look very, very familiar. Nothing changed here. Last function looks very
+
+65
+00:05:51,040 --> 00:05:57,600
+ crazy. We should probably fix this. And that's because 32 batch elements are too few. And so you
+
+66
+00:05:57,600 --> 00:06:02,560
+ can get very lucky, lucky or unlucky in any one of these batches, and it creates a very thick
+
+67
+00:06:02,560 --> 00:06:08,560
+ loss function. So we're going to fix that soon. Now, once we want to evaluate the trained neural
+
+68
+00:06:08,560 --> 00:06:13,120
+ network, we need to remember because of the batch from layers to set all the layers to be training
+
+69
+00:06:13,120 --> 00:06:18,560
+ equals false. So this only matters for the batch from layer so far. And then we evaluate.
+
+70
+00:06:18,560 --> 00:06:25,840
+ We see that currently we have validation loss of 2.10, which is fairly good, but there's still
+
+71
+00:06:25,840 --> 00:06:31,600
+ ways to go. But even at 2.10, we see that when we sample from the model, we actually get relatively
+
+72
+00:06:31,600 --> 00:06:40,640
+ name like results that do not exist in a training set. So for example, a von, kilo, a pros, a liar,
+
+73
+00:06:40,640 --> 00:06:48,240
+ etc. So certainly not reasonable, not unreasonable, I would say, but not amazing. And we can still
+
+74
+00:06:48,240 --> 00:06:52,640
+ push this validation loss even lower and get much better samples that are even more name like.
+
+75
+00:06:52,640 --> 00:06:59,600
+ So let's improve this model. Okay, first, let's fix this graph because it is daggers in my eyes,
+
+76
+00:06:59,600 --> 00:07:07,040
+ and I just can't take it anymore. So last I, if you recall, is a Python list of floats. So for
+
+77
+00:07:07,040 --> 00:07:12,720
+ example, the first 10 elements look like this. Now what we'd like to do basically is we need to
+
+78
+00:07:12,720 --> 00:07:19,840
+ average up some of these values to get a more sort of representative value along the way. So one
+
+79
+00:07:19,840 --> 00:07:26,320
+ way to do this is to follow him in pytorch. If I create, for example, a tensor of the first 10
+
+80
+00:07:26,320 --> 00:07:31,600
+ numbers, then this is currently a one dimensional array. But recall that I can view this array
+
+81
+00:07:31,600 --> 00:07:36,960
+ as two dimensional. So for example, I can view it as a two by five array. And this is a 2D tensor
+
+82
+00:07:36,960 --> 00:07:42,560
+ now, two by five. And you see what pytorch has done is that the first row of this tensor is the
+
+83
+00:07:42,560 --> 00:07:47,840
+ first five elements. And the second row is the second five elements. I can also view it as a
+
+84
+00:07:47,840 --> 00:07:54,800
+ five by two as an example. And then recall that I can also use negative one in place of one of
+
+85
+00:07:54,800 --> 00:07:59,600
+ these numbers in pytorch will calculate what that number must be in order to make the number
+
+86
+00:07:59,600 --> 00:08:06,880
+ of elements work out. So this can be this or like that, both will work. Of course, this would not work.
+
+87
+00:08:06,880 --> 00:08:14,320
+ Okay, so this allows it to spread out some of the consecutive values into rows. So that's very
+
+88
+00:08:14,320 --> 00:08:18,880
+ helpful because what we can do now is first of all, we're going to create a torch.tensor
+
+89
+00:08:18,880 --> 00:08:26,640
+ out of the list of floats. And then we're going to view it as whatever it is, but we're going to
+
+90
+00:08:26,640 --> 00:08:33,760
+ stretch it out into rows of 1000 consecutive elements. So the shape of this now becomes 200 by 1000.
+
+91
+00:08:33,760 --> 00:08:41,200
+ And each row is 1000 consecutive elements in this list. So that's very helpful because now we can do
+
+92
+00:08:41,200 --> 00:08:48,560
+ a mean along the rows. And the shape of this will just be 200. And so we've taken basically the mean
+
+93
+00:08:48,560 --> 00:08:55,840
+ on every row. So PLT dot plot of that should be something nicer. Much better. So we see that we've
+
+94
+00:08:55,840 --> 00:09:01,680
+ basically made a live progress. And then here, this is the learning rate decay. So here we see that
+
+95
+00:09:01,680 --> 00:09:06,560
+ the learning rate decay subtracted a ton of energy out of the system and allowed us to settle into
+
+96
+00:09:06,560 --> 00:09:13,520
+ the local minimum in this optimization. So this is a much nicer plot. Let me come up and delete the
+
+97
+00:09:13,520 --> 00:09:18,560
+ monster. And we're going to be using this going forward. Now next up, what I'm bothered by is that
+
+98
+00:09:18,560 --> 00:09:24,800
+ you see our forward pass is a little bit gnarly and takes away too many lines of code. So in
+
+99
+00:09:24,800 --> 00:09:29,760
+ particular, we see that we've organized some of the layers inside the layers list, but not all of them
+
+100
+00:09:29,760 --> 00:09:35,200
+ for no reason. So in particular, we see that we still have the embedding table special case
+
+101
+00:09:35,200 --> 00:09:40,560
+ outside of the layers. And in addition to that, the viewing operation here is also outside of our
+
+102
+00:09:40,560 --> 00:09:45,360
+ layers. So let's create layers for these. And then we can add those layers to just our list.
+
+103
+00:09:45,360 --> 00:09:51,760
+ So in particular, the two things that we need is here, we have this embedding table. And we are
+
+104
+00:09:51,760 --> 00:09:59,920
+ indexing at the integers inside the batch exp inside the tensor exp. So that's an embedding table
+
+105
+00:09:59,920 --> 00:10:04,880
+ lookup just done with indexing. And then here we see that we have this view operation, which if
+
+106
+00:10:04,880 --> 00:10:11,920
+ you recall from the previous video, simply rearranges the character embeddings and stretches them out
+
+107
+00:10:11,920 --> 00:10:17,120
+ into row. And effectively, what Bernat does is the concatenation operation, basically,
+
+108
+00:10:17,120 --> 00:10:23,280
+ except it's free because viewing is very cheap in PyTorch. And no memory is being copied.
+
+109
+00:10:23,280 --> 00:10:26,640
+ We're just re-representing how we view that tensor. So let's create
+
+110
+00:10:26,640 --> 00:10:32,880
+ modules for both of these operations, the embedding operation and the flattening operation.
+
+111
+00:10:32,880 --> 00:10:40,960
+ So I actually wrote the code in just to save some time. So we have a module embedding and a module
+
+112
+00:10:40,960 --> 00:10:47,600
+ flatten. And both of them simply do the indexing operation in a forward pass and the flattening
+
+113
+00:10:47,600 --> 00:10:55,760
+ operation here. And this C now will just become a soft dot wait inside an embedding module.
+
+114
+00:10:55,760 --> 00:11:00,800
+ And I'm calling these layers specifically embedding and flatten because it turns out that both of
+
+115
+00:11:00,800 --> 00:11:06,480
+ them actually exist in PyTorch. So in PyTorch, we have an end-out embedding. And it also takes
+
+116
+00:11:06,480 --> 00:11:10,960
+ the number of embeddings and the dimensionality of the embedding, just like we have here. But in
+
+117
+00:11:10,960 --> 00:11:16,000
+ addition PyTorch takes a lot of other keyword arguments that we are not using for our purposes
+
+118
+00:11:16,000 --> 00:11:22,480
+ yet. And for flatten, that also exists in PyTorch. And it also takes additional keyword arguments
+
+119
+00:11:22,480 --> 00:11:27,920
+ that we are not using. So we have a very simple flatten. But both of them exist in PyTorch
+
+120
+00:11:27,920 --> 00:11:35,120
+ they're just a bit more simpler. And now that we have these, we can simply take out some of these
+
+121
+00:11:35,120 --> 00:11:43,360
+ special case things. So instead of C, we're just going to have an embedding and have a look up size
+
+122
+00:11:43,360 --> 00:11:50,560
+ and N embed. And then after the embedding, we are going to flatten. So let's construct those modules
+
+123
+00:11:50,560 --> 00:11:56,640
+ and now I can take out this C. And here I don't have to special case it anymore because now C
+
+124
+00:11:56,640 --> 00:12:05,600
+ is the embedding's weight and it's inside layers. So this should just work. And then here our
+
+125
+00:12:05,600 --> 00:12:10,800
+ forward pass simplifies substantially because we don't need to do these now outside of these layer
+
+126
+00:12:10,800 --> 00:12:19,120
+ outside and explicitly. They're now inside layers. So we can delete those. But now to kick things off,
+
+127
+00:12:19,120 --> 00:12:24,960
+ we want this little x which in the beginning is just xb. The tensor of integers specifying the
+
+128
+00:12:24,960 --> 00:12:29,760
+ identities of these characters at the input. And so these characters can now directly feed into
+
+129
+00:12:29,760 --> 00:12:35,680
+ the first layer and this should just work. So let me come here and insert a break because I just
+
+130
+00:12:35,680 --> 00:12:39,920
+ want to make sure that the first iteration of this runs and that there's no mistake. So that
+
+131
+00:12:39,920 --> 00:12:45,600
+ ran properly. And basically we've substantially simplified the forward pass here. Okay, I'm sorry,
+
+132
+00:12:45,600 --> 00:12:51,040
+ I changed my microphone. So hopefully the audio is a little bit better. Now one more thing that I
+
+133
+00:12:51,040 --> 00:12:55,040
+ would like to do in order to pytorchify our code even further is that right now we are maintaining
+
+134
+00:12:55,040 --> 00:13:00,800
+ all of our modules in a naked list of layers. And we can also simplify this because we can
+
+135
+00:13:00,800 --> 00:13:05,840
+ introduce the concept of pytorch containers. So in torch dot and then which we are basically
+
+136
+00:13:05,840 --> 00:13:10,320
+ rebuilding from scratch here, there's a concept of containers. And these containers are basically
+
+137
+00:13:10,320 --> 00:13:17,840
+ a way of organizing layers into lists or dicks and so on. So in particular, there's a sequential
+
+138
+00:13:17,840 --> 00:13:24,240
+ which maintains a list of layers and is a module class in pytorch. And it basically just passes
+
+139
+00:13:24,240 --> 00:13:29,520
+ a given input through all the layers sequentially exactly as we are doing here. So let's write our
+
+140
+00:13:29,520 --> 00:13:35,760
+ own sequential, I've written a code here. And basically the code for sequential is quite straightforward.
+
+141
+00:13:35,760 --> 00:13:41,040
+ We pass in a list of layers, which we keep here, and then given any input in a forward pass,
+
+142
+00:13:41,040 --> 00:13:45,280
+ we just call all the layers sequentially and return the result. In terms of the parameters,
+
+143
+00:13:45,280 --> 00:13:51,120
+ it's just all the parameters of the child modules. So we can run this and we can again simplify
+
+144
+00:13:51,120 --> 00:13:55,520
+ this substantially, because we don't maintain this naked list of layers, we now have a notion of a
+
+145
+00:13:55,520 --> 00:14:06,160
+ model, which is a module. And in particular, is a sequential of all the layers. And now parameters
+
+146
+00:14:06,160 --> 00:14:11,760
+ are simply just a model of parameters. And so that list comprehension now lives here.
+
+147
+00:14:13,840 --> 00:14:16,960
+ And then here we are, press here we are doing all the things we used to do.
+
+148
+00:14:16,960 --> 00:14:23,680
+ Now here, the code again simplifies substantially, because we don't have to do this forwarding here,
+
+149
+00:14:23,680 --> 00:14:28,320
+ instead of just call the model on the input data. And the input data here are the integers inside
+
+150
+00:14:28,320 --> 00:14:34,320
+ XB. So we can simply do logits, which are the outputs of our model, are simply the model called
+
+151
+00:14:34,320 --> 00:14:42,480
+ on XB. And then the cross entropy here takes the logits and the targets. So this simplifies
+
+152
+00:14:42,480 --> 00:14:47,840
+ substantially. And then this looks good. So let's just make sure this runs, that looks good.
+
+153
+00:14:47,840 --> 00:14:53,840
+ Now here, we actually have some work to do still here, but I'm going to come back later. For now,
+
+154
+00:14:53,840 --> 00:14:59,440
+ there's no more layers, there's a model that layers, but it's not a to access attributes of
+
+155
+00:14:59,440 --> 00:15:03,920
+ these classes directly. So we'll come back and fix this later. And then here, of course,
+
+156
+00:15:03,920 --> 00:15:08,640
+ this simplifies substantially as well, because logits are the model called on X.
+
+157
+00:15:10,560 --> 00:15:16,480
+ And then these logits come here. So we can evaluate the train evaluation loss,
+
+158
+00:15:16,480 --> 00:15:20,480
+ which currently is terrible, because we just initialized it in your own let. And then we can
+
+159
+00:15:20,480 --> 00:15:25,200
+ also sample from the model. And this simplifies dramatically as well, because we just want to call
+
+160
+00:15:25,200 --> 00:15:32,880
+ the model on to the context and outcome logits. And then these logits go into softmax and get the
+
+161
+00:15:32,880 --> 00:15:43,120
+ probabilities, etc. So we can sample from this model. What did I screw up? Okay, so I fixed the
+
+162
+00:15:43,120 --> 00:15:48,400
+ issue, and we now get the result that we expect, which is gibberish, because the model is not trained
+
+163
+00:15:48,400 --> 00:15:53,200
+ because we reinitialize it from scratch. The problem was that when I fixed this cell to be
+
+164
+00:15:53,200 --> 00:15:57,840
+ modeled out layers instead of just layers, I did not actually run the cell. And so our neural
+
+165
+00:15:57,840 --> 00:16:02,800
+ net was in a training mode. And what caused the issue here is the batch room layer, as a batch
+
+166
+00:16:02,800 --> 00:16:08,000
+ room layer often likes to do, because batch room was in the training mode. And here we are passing
+
+167
+00:16:08,000 --> 00:16:13,760
+ in an input, which is a batch of just a single example made up of the context. And so if you are
+
+168
+00:16:13,760 --> 00:16:17,760
+ trying to pass in a single example into a batch norm that is in the training mode, you're going to
+
+169
+00:16:17,760 --> 00:16:23,200
+ end up estimating the variance using the input. And the variance of a single number is not a number,
+
+170
+00:16:23,840 --> 00:16:28,880
+ because it is a measure of a spread. So for example, the variance of just a single number five,
+
+171
+00:16:28,880 --> 00:16:34,240
+ you can see is not a number. And so that's what happened. And the batch room basically caused an
+
+172
+00:16:34,240 --> 00:16:39,440
+ issue. And then that polluted all of the further processing. So all that we had to do was make
+
+173
+00:16:39,440 --> 00:16:46,480
+ sure that this runs. And we basically made the issue of, again, we didn't actually see the issue
+
+174
+00:16:46,480 --> 00:16:50,400
+ with the loss. We could have evaluated the loss, but we got the wrong result, because batch norm
+
+175
+00:16:50,400 --> 00:16:55,680
+ was in the training mode. And so we still get a result is just the wrong result, because it's
+
+176
+00:16:55,680 --> 00:17:01,440
+ using the sample statistics of the batch, whereas we want to use the running mean and running variance
+
+177
+00:17:01,440 --> 00:17:08,880
+ inside the batch drawer. And so, again, an example of introducing a bug in line, because we did not
+
+178
+00:17:08,880 --> 00:17:13,680
+ properly maintain the state of what is training or not. Okay, so I we're in everything. And here's
+
+179
+00:17:13,680 --> 00:17:19,600
+ what we are. As a reminder, we have the training loss of 2.05 and validation 2.10. Now, because
+
+180
+00:17:19,600 --> 00:17:24,080
+ these losses are very similar to each other, we have a sense that we are not overfitting too much
+
+181
+00:17:24,080 --> 00:17:28,800
+ on this task. And we can make additional progress in our performance by scaling up the size of the
+
+182
+00:17:28,800 --> 00:17:34,320
+ neural network and making everything bigger and deeper. Now, currently, we are using this architecture
+
+183
+00:17:34,320 --> 00:17:38,400
+ here, where we are taking in some number of characters going into a single hidden layer,
+
+184
+00:17:38,400 --> 00:17:42,800
+ and then going to the prediction of the next character. The problem here is we don't have
+
+185
+00:17:42,800 --> 00:17:49,840
+ in the deep way of making this bigger in a productive way. We could, of course, use our layers,
+
+186
+00:17:49,840 --> 00:17:54,240
+ sort of building blocks and materials to introduce additional layers here and make the network
+
+187
+00:17:54,240 --> 00:17:58,640
+ deeper. But it is still the case that we are crushing all of the characters into a single
+
+188
+00:17:58,640 --> 00:18:03,840
+ layer all the way at the beginning. And even if we make this a bigger layer and add neurons,
+
+189
+00:18:03,840 --> 00:18:08,960
+ it's still kind of like silly to squash all that information so fast in a single step.
+
+190
+00:18:09,760 --> 00:18:13,600
+ So what we'd like to do instead is we'd like our network to look a lot more like this in the
+
+191
+00:18:13,600 --> 00:18:17,840
+ WaveNet case. So you see in the WaveNet, when we are trying to make the prediction for the next
+
+192
+00:18:17,840 --> 00:18:23,920
+ character in a sequence, it is a function of the previous characters that feed in, but not
+
+193
+00:18:23,920 --> 00:18:28,640
+ all of these different characters are not just crushed to a single layer, and then you have a
+
+194
+00:18:28,640 --> 00:18:35,280
+ sandwich. They are crushed slowly. So in particular, we take two characters and we fuse them into
+
+195
+00:18:35,280 --> 00:18:40,240
+ sort of like a diagram representation. And we do that for all these characters consecutively,
+
+196
+00:18:40,240 --> 00:18:46,000
+ and then we take the diagrams and we fuse those into four characters all with chunks.
+
+197
+00:18:46,000 --> 00:18:51,120
+ And then we fuse that again. And so we do that in this like tree-like, hierarchical manner.
+
+198
+00:18:51,120 --> 00:18:57,520
+ So we fuse the information from the previous context slowly into the network as it gets deeper.
+
+199
+00:18:57,520 --> 00:19:02,240
+ And so this is the kind of architecture that we want to implement. Now in the WaveNet case,
+
+200
+00:19:02,240 --> 00:19:07,120
+ this is a visualization of a stack of dilated, causal convolution layers. And this makes it
+
+201
+00:19:07,120 --> 00:19:11,440
+ sound very scary, but actually the idea is very simple. And the fact that it's a dilated,
+
+202
+00:19:11,440 --> 00:19:15,440
+ causal convolution layer is really just an implementation detail to make everything fast.
+
+203
+00:19:15,440 --> 00:19:19,600
+ We're going to see that later. But for now, let's just keep the basic idea of it,
+
+204
+00:19:19,600 --> 00:19:24,240
+ which is this progressive fusion. So we want to make the network deeper, and at each level,
+
+205
+00:19:24,240 --> 00:19:30,080
+ we want to fuse only two consecutive elements, two characters, then two bi-grams, then two
+
+206
+00:19:30,080 --> 00:19:34,800
+ four-grams, and so on. So let's implant this. Okay, so first up, let me scroll to where we built
+
+207
+00:19:34,800 --> 00:19:39,440
+ the dataset, and let's change the block size from three to eight. So we're going to be taking
+
+208
+00:19:39,440 --> 00:19:45,040
+ eight characters of context to predict the ninth character. So the dataset now looks like this.
+
+209
+00:19:45,040 --> 00:19:49,040
+ We have a lot more context feeding in to predict any next character in a sequence.
+
+210
+00:19:49,040 --> 00:19:52,480
+ And these eight characters are going to be processed in this tree-like structure.
+
+211
+00:19:52,480 --> 00:19:58,240
+ Now if we scroll here, everything here should just be able to work. So we should be able to
+
+212
+00:19:58,240 --> 00:20:03,040
+ redefine the network. You see that the number of parameters has increased by 10,000, and that's
+
+213
+00:20:03,040 --> 00:20:08,400
+ because the block size has grown. So this first linear layer is much, much bigger. Our linear
+
+214
+00:20:08,400 --> 00:20:14,240
+ layer now takes eight characters into this middle layer. So there's a lot more parameters there.
+
+215
+00:20:14,240 --> 00:20:20,240
+ But this should just run. Let me just break right after the very first iteration. So you see that
+
+216
+00:20:20,240 --> 00:20:24,400
+ this runs just fine. It's just that this network doesn't make too much sense. We're crushing way
+
+217
+00:20:24,400 --> 00:20:29,680
+ too much information way too fast. So let's now come in and see how we could try to
+
+218
+00:20:29,680 --> 00:20:33,520
+ implement the hierarchical scheme. Now before we dive into the detail of the
+
+219
+00:20:33,520 --> 00:20:38,320
+ re-implementation here, I was just curious to actually run it and see where we are in terms of the
+
+220
+00:20:38,320 --> 00:20:43,280
+ baseline performance of just lazily scaling up the context length. So I'll let it run,
+
+221
+00:20:43,280 --> 00:20:47,760
+ we get a nice loss curve, and then evaluating the loss, we actually see quite a bit of improvement
+
+222
+00:20:47,760 --> 00:20:52,960
+ just from increasing the context length. So I started a little bit of a performance log here,
+
+223
+00:20:52,960 --> 00:20:58,880
+ and previously where we were is we were getting performance of 2.10 on the validation loss.
+
+224
+00:20:58,880 --> 00:21:04,080
+ And now simply scaling up the context length from 3 to 8 gives us a performance of 2.02.
+
+225
+00:21:04,080 --> 00:21:08,960
+ So quite a bit of an improvement here. And also when you sample from the model, you see that the
+
+226
+00:21:08,960 --> 00:21:14,560
+ names are definitely improving qualitatively as well. So we could of course spend a lot of time
+
+227
+00:21:14,560 --> 00:21:20,720
+ here tuning things and making it even bigger and scaling up an network further, even with this simple
+
+228
+00:21:21,680 --> 00:21:27,520
+ sort of setup here. But let's continue and let's implement here our model and treat this as just
+
+229
+00:21:27,520 --> 00:21:33,040
+ a rough baseline performance. But there's a lot of optimization like left on the table in terms of
+
+230
+00:21:33,040 --> 00:21:37,680
+ some of the hyper parameters that you're hopefully getting a sense of now. Okay, so let's scroll up now
+
+231
+00:21:37,680 --> 00:21:43,680
+ and come back up. And what I've done here is I've created a bit of a scratch space for us to just
+
+232
+00:21:43,680 --> 00:21:49,280
+ like look at the forward pass of the neural net and inspect the shape of the tensor along the way
+
+233
+00:21:49,280 --> 00:21:56,320
+ as the neural net forwards. So here, I'm just temporarily for debugging, creating a batch of just say,
+
+234
+00:21:56,320 --> 00:22:01,520
+ for examples. So for random integers, then I'm plucking out those rows from our training set.
+
+235
+00:22:01,520 --> 00:22:08,640
+ And then I'm passing into the model the input XP. Now the shape of XP here, because we have only
+
+236
+00:22:08,640 --> 00:22:16,960
+ four examples is four by eight. And this eight is now the current block size. So inspecting XP,
+
+237
+00:22:16,960 --> 00:22:22,560
+ we just see that we have four examples. Each one of them is a row of XP. And we have eight
+
+238
+00:22:22,560 --> 00:22:27,360
+ characters here. And this integer tensor just contains the identities of those characters.
+
+239
+00:22:27,360 --> 00:22:34,640
+ So the first layer of our neural net is the embedding layer. So passing XP, this integer tensor
+
+240
+00:22:34,640 --> 00:22:40,320
+ through the embedding layer creates an output that is four by eight by 10. So our embedding table
+
+241
+00:22:40,320 --> 00:22:46,640
+ has for each character a 10 dimensional vector that we are trying to learn. And so with the
+
+242
+00:22:46,640 --> 00:22:52,800
+ embedding layer does here is it plucks out the embedding vector for each one of these integers
+
+243
+00:22:52,800 --> 00:22:59,680
+ and organizes it all in a four by eight by 10 tensor now. So all of these integers are
+
+244
+00:22:59,680 --> 00:23:05,280
+ translated into 10 dimensional vectors inside this three dimensional tensor now. Now passing
+
+245
+00:23:05,280 --> 00:23:10,720
+ that through the flatten layer, as you recall, what this does is it views this tensor as just a four
+
+246
+00:23:10,720 --> 00:23:16,480
+ by eight tensor. And what that effectively does is that all these 10 dimensional embeddings for
+
+247
+00:23:16,480 --> 00:23:22,080
+ all these eight characters just end up being stretched out into a long row. And that looks
+
+248
+00:23:22,080 --> 00:23:27,600
+ kind of like a concatenation operation, basically. So by viewing the tensor differently, we now have
+
+249
+00:23:27,600 --> 00:23:34,960
+ a four by 80. And inside this 80, it's all the 10 dimensional vectors just concatenating next to
+
+250
+00:23:34,960 --> 00:23:41,520
+ each other. And the linear layer, of course, takes 80 and creates 200 channels just via matrix
+
+251
+00:23:41,520 --> 00:23:48,320
+ multiplication. So so far, so good. Now I'd like to show you something surprising. Let's look at the
+
+252
+00:23:48,320 --> 00:23:53,680
+ insights of the linear layer and remind ourselves how it works. The linear layer here in the
+
+253
+00:23:53,680 --> 00:23:58,880
+ forward pass takes the input X multiplies it with a weight and then optionally adds bias.
+
+254
+00:23:58,880 --> 00:24:03,520
+ And the weight here is two dimensional as defined here. And the bias is one dimensional here.
+
+255
+00:24:04,400 --> 00:24:08,880
+ So effectively, in terms of the shapes involved, what's happening inside this linear layer looks
+
+256
+00:24:08,880 --> 00:24:14,800
+ like this right now. And I'm using random numbers here, but I'm just illustrating the shapes and
+
+257
+00:24:14,800 --> 00:24:20,640
+ what happens. Basically, a four by 80 input comes into the linear layer. It's multiplied by this
+
+258
+00:24:20,640 --> 00:24:25,760
+ 80 by 200 weight matrix inside. And there's a plus 200 bias. And the shape of the whole thing that
+
+259
+00:24:25,760 --> 00:24:32,720
+ comes out of the linear layer is four by 200, as we see here. Now notice here, by the way, that this
+
+260
+00:24:32,720 --> 00:24:39,040
+ here will create a four by 200 tensor and then plus 200, there's a broadcasting happening here,
+
+261
+00:24:39,040 --> 00:24:45,840
+ but four by 200 broadcasts with 200. So everything works here. So now the surprising thing that I'd
+
+262
+00:24:45,840 --> 00:24:50,400
+ like to show you that you may not expect is that this input here that is being multiplied,
+
+263
+00:24:50,400 --> 00:24:56,080
+ doesn't actually have to be two dimensional. This matrix multiply operator and pie torch is
+
+264
+00:24:56,080 --> 00:25:00,720
+ quite powerful. And in fact, you can actually pass in higher dimensional arrays or tensors and
+
+265
+00:25:00,720 --> 00:25:05,040
+ everything works fine. So for example, this could be four by five by 80. And the result in that case
+
+266
+00:25:05,040 --> 00:25:10,480
+ will become four by five by 200. You can add as many dimensions as you like on the left here.
+
+267
+00:25:10,480 --> 00:25:16,320
+ And so effectively, what's happening is that the matrix multiplication only works on the last
+
+268
+00:25:16,320 --> 00:25:20,880
+ dimension. And the dimensions before it in the input tensor are left unchanged.
+
+269
+00:25:20,880 --> 00:25:30,240
+ So that is basically these, these dimensions on the left are all treated as just a batch dimension.
+
+270
+00:25:31,040 --> 00:25:36,240
+ So we can have multiple batch dimensions. And then in parallel over all those dimensions,
+
+271
+00:25:36,240 --> 00:25:41,200
+ we are doing the matrix multiplication on the last dimension. So this is quite convenient because
+
+272
+00:25:41,200 --> 00:25:46,960
+ we can use that in our network now, because remember that we have these eight characters coming in.
+
+273
+00:25:46,960 --> 00:25:54,160
+ And we don't want to now flatten all of it out into a large eight dimensional vector,
+
+274
+00:25:54,880 --> 00:26:02,080
+ because we don't want to matrix multiply 80 into a weight matrix multiply immediately.
+
+275
+00:26:02,080 --> 00:26:10,400
+ Instead, we want to group these like this. So every consecutive two elements, one, two, and three,
+
+276
+00:26:10,400 --> 00:26:16,160
+ and four, and five, and six, and seven, and eight, all of these should be now basically flattened out
+
+277
+00:26:16,160 --> 00:26:21,920
+ and multiplied by a weight matrix. But all of these four groups here, we'd like to process in parallel.
+
+278
+00:26:21,920 --> 00:26:28,160
+ So it's kind of like a batch dimension that we can introduce. And then we can in parallel,
+
+279
+00:26:28,160 --> 00:26:35,200
+ basically process all of these, uh, bygram groups in the four batch dimensions of an individual
+
+280
+00:26:35,200 --> 00:26:40,960
+ example, and also over the actual batch dimension of the, you know, four examples in our example here.
+
+281
+00:26:40,960 --> 00:26:47,920
+ So let's see how that works. Effectively, what we want is right now, we take a four by 80 and
+
+282
+00:26:47,920 --> 00:26:55,120
+ multiply by 80 by 200 to in the linear layer. This is what happens. But instead of what we want is
+
+283
+00:26:55,120 --> 00:27:01,120
+ we don't want 80 characters or 80 numbers to come in. We only want two characters to come in on the
+
+284
+00:27:01,120 --> 00:27:07,520
+ very first layer. And those two characters should be fused. So in other words, we just want 20 to come
+
+285
+00:27:07,520 --> 00:27:13,920
+ in, right? 20 numbers would come in. And here we don't want a four by 80 to feed into the linear
+
+286
+00:27:13,920 --> 00:27:19,520
+ layer. We actually want these groups of two to feed in. So instead of four by 80, we want this to be a
+
+287
+00:27:19,520 --> 00:27:28,400
+ four by four by 20. So these are the four groups of two, and each one of them is 10 dimensional
+
+288
+00:27:28,400 --> 00:27:33,520
+ vector. So what we want is now is we need to change the flatten layer. So it doesn't output a
+
+289
+00:27:33,520 --> 00:27:41,280
+ four by 80, but it outputs a four by four by 20, where basically these, um, every two consecutive
+
+290
+00:27:41,280 --> 00:27:48,880
+ characters are packed in on the very last dimension. And then these four is the first batch dimension.
+
+291
+00:27:48,880 --> 00:27:53,760
+ And this four is the second batch dimension referring to the four groups inside everyone of
+
+292
+00:27:53,760 --> 00:27:59,360
+ these examples. And then this will just multiply like this. So this is what we want to get to.
+
+293
+00:27:59,360 --> 00:28:03,760
+ So we're going to have to change the linear layer in terms of how many inputs it expects. It shouldn't
+
+294
+00:28:03,760 --> 00:28:09,280
+ expect 80. It should just expect 20 numbers. And we have to change our flatten layer. So it
+
+295
+00:28:09,280 --> 00:28:15,520
+ doesn't just fully flatten out this entire example. It needs to create a four by four by 20,
+
+296
+00:28:15,520 --> 00:28:20,640
+ instead of a four by 80. So let's see how this could be implemented. Basically, right now we have
+
+297
+00:28:20,640 --> 00:28:26,000
+ an input that is a four by eight by 10, that feeds into the flatten layer. And currently,
+
+298
+00:28:26,000 --> 00:28:30,480
+ the flatten layer just stretches it out. So if you remember the implementation of flatten,
+
+299
+00:28:30,480 --> 00:28:36,160
+ it takes our X and it just views it as whatever the batch dimension is, and then negative one.
+
+300
+00:28:37,200 --> 00:28:42,960
+ So effectively, what it does right now is it does ew of four, negative one, and the shape of this,
+
+301
+00:28:42,960 --> 00:28:49,360
+ of course, is four by eight. So that's what currently happens. And we instead want this to be a four
+
+302
+00:28:49,360 --> 00:28:55,840
+ by four by 20, where these consecutive 10 dimensional vectors get concatenated. So you know how when
+
+303
+00:28:55,840 --> 00:29:03,920
+ Python, you can take a list of range of 10. So we have numbers from zero to nine. And we can index
+
+304
+00:29:03,920 --> 00:29:09,840
+ like this to get all the even parts. And we can also index like starting at one and going in steps
+
+305
+00:29:09,840 --> 00:29:17,280
+ up to get all the odd parts. So one way to implement this, it would be as follows, we can take E,
+
+306
+00:29:17,280 --> 00:29:24,000
+ and we can index into it for all the batch elements, and then just even elements in this
+
+307
+00:29:24,000 --> 00:29:32,160
+ dimension. So at index zero, two, four, and eight. And then all the parts here from this last dimension.
+
+308
+00:29:33,440 --> 00:29:41,680
+ And this gives us the even characters. And then here, this gives us all the odd characters.
+
+309
+00:29:41,680 --> 00:29:45,440
+ And basically, what we want to do is we make sure we want to make sure that these get concatenated
+
+310
+00:29:45,440 --> 00:29:51,200
+ impact work. And then we want to concatenate these two tensors along the second dimension.
+
+311
+00:29:51,200 --> 00:29:58,320
+ So this and the shape of it would be four by four by 20. This is definitely the result we want.
+
+312
+00:29:58,320 --> 00:30:04,720
+ We are explicitly grabbing the even parts and the odd parts. And we're arranging those four by four
+
+313
+00:30:04,720 --> 00:30:11,520
+ by 10, right next to each other, and concatenate. So this works. But it turns out that what also works
+
+314
+00:30:11,520 --> 00:30:17,280
+ is you can simply use a view again, and just request the right shape. And it just so happens
+
+315
+00:30:17,280 --> 00:30:22,640
+ that in this case, those vectors will again end up being arranged in exactly the way we want.
+
+316
+00:30:22,640 --> 00:30:27,840
+ So in particular, if we take E, and we just view it as a four by four by 20, which is what we want.
+
+317
+00:30:28,720 --> 00:30:33,760
+ We can check that this is exactly equal to what let me call this, this is the explicit
+
+318
+00:30:33,760 --> 00:30:41,040
+ concatenation, I suppose. So explicit dot shape is four by four by 20. If you just view it as
+
+319
+00:30:41,040 --> 00:30:47,200
+ four by four by 20, you can check that when you compare it to explicit, you get a bit.
+
+320
+00:30:47,200 --> 00:30:50,320
+ This is element wise operation. So making sure that all of them are true,
+
+321
+00:30:50,320 --> 00:30:55,840
+ if that is the true. So basically long story short, we don't need to make an explicit call to
+
+322
+00:30:55,840 --> 00:31:03,120
+ concatenate, etc. We can simply take this input tensor to flatten, and we can just view it in
+
+323
+00:31:03,120 --> 00:31:08,960
+ whatever way we want. And in particular, we don't want to stretch things out with negative one.
+
+324
+00:31:08,960 --> 00:31:14,240
+ We want to actually create a three dimensional array. And depending on how many vectors that
+
+325
+00:31:14,240 --> 00:31:20,960
+ are consecutive, we want to fuse, like for example, two, then we can just simply ask for this the
+
+326
+00:31:20,960 --> 00:31:27,440
+ measure to be 20. And using negative one here, and pytorch will figure out how many groups it needs
+
+327
+00:31:27,440 --> 00:31:33,280
+ to pack into this additional batch dimension. So let's now go into flatten and implement this.
+
+328
+00:31:33,280 --> 00:31:38,000
+ Okay, so I scroll up here to flatten. And what we'd like to do is we'd like to change it now.
+
+329
+00:31:38,000 --> 00:31:42,640
+ So let me create a constructor and take the number of elements that are consecutive that we would
+
+330
+00:31:42,640 --> 00:31:48,000
+ like to concatenate now in the last dimension of the output. So here, we're just going to remember
+
+331
+00:31:48,560 --> 00:31:54,080
+ cell data and equals n. And then I want to be careful here, because pytorch actually has a
+
+332
+00:31:54,080 --> 00:31:58,480
+ torched up flatten. And its keyword arguments are different. And they kind of like function
+
+333
+00:31:58,480 --> 00:32:03,440
+ differently. So our flatten is going to start to depart from pytorch flatten. So let me call it
+
+334
+00:32:03,440 --> 00:32:08,960
+ flat flatten consecutive or something like that, just to make sure that our APIs are about equal.
+
+335
+00:32:08,960 --> 00:32:16,320
+ So this basically flattens only some and consecutive elements and puts them into the last dimension.
+
+336
+00:32:17,600 --> 00:32:26,160
+ Now here, the shape of X is B by T by C. So let me pop those out into variables and recall that
+
+337
+00:32:26,160 --> 00:32:36,480
+ in our example down below, B was four, T was eight, and C was 10. Now instead of doing X dot view of
+
+338
+00:32:36,480 --> 00:32:48,160
+ B by negative one, right, this is what we had before. We want this to be B by negative one by
+
+339
+00:32:48,160 --> 00:32:55,680
+ and basically here, we want C times n. That's how many consecutive elements we want.
+
+340
+00:32:55,680 --> 00:33:00,640
+ And here instead of negative one, I don't super love to use up negative one, because
+
+341
+00:33:00,640 --> 00:33:04,320
+ I like to be very explicit so that you get error messages when things don't go according to your
+
+342
+00:33:04,320 --> 00:33:11,360
+ expectation. So what do we expect here? We expect this to become T divide and using integer division
+
+343
+00:33:11,360 --> 00:33:17,120
+ here. So that's what I expect to happen. And then one more thing I want to do here is remember
+
+344
+00:33:17,120 --> 00:33:22,560
+ previously, all the way in the beginning, n was three, and basically we're concatenating
+
+345
+00:33:22,560 --> 00:33:29,040
+ all the three characters that existed there. So we basically concatenated everything.
+
+346
+00:33:29,840 --> 00:33:34,720
+ And so sometimes that can create a spurious dimension of one here. So if it is the case that X dot
+
+347
+00:33:34,720 --> 00:33:41,440
+ shape at one is one, then it's kind of like a spurious dimension. So we don't want to return a
+
+348
+00:33:41,440 --> 00:33:47,040
+ three dimensional tensor with a one here, we just want to return a two dimensional tensor exactly as
+
+349
+00:33:47,040 --> 00:33:54,160
+ we did before. So in this case, basically, we will just say X equals X dot squeeze. That is a
+
+350
+00:33:54,160 --> 00:34:02,800
+ pytorch function. And squeeze takes a dimension that it either squeezes out all the dimensions of
+
+351
+00:34:02,800 --> 00:34:08,720
+ a tensor that are one, or you can specify the exact dimension that you want to be squeezed.
+
+352
+00:34:08,720 --> 00:34:14,400
+ And again, I like to be as explicit as possible always. So I expect to squeeze out the first dimension
+
+353
+00:34:14,400 --> 00:34:20,480
+ only of this tensor, this three dimensional tensor. And if this dimension here is one,
+
+354
+00:34:20,480 --> 00:34:27,520
+ then I just want to return B by C times n. And so self dot out will be X, and then we return self
+
+355
+00:34:27,520 --> 00:34:33,440
+ dot out. So that's the candidate implementation. And of course, this should be self dot in instead
+
+356
+00:34:33,440 --> 00:34:42,080
+ of just n. So let's run. And let's come here now, and take it for a spin. So flatten consecutive.
+
+357
+00:34:44,240 --> 00:34:50,480
+ And in the beginning, let's just use eight. So this should recover the previous behavior. So
+
+358
+00:34:50,480 --> 00:34:57,680
+ flatten consecutive of eight, which is the current block size. You can do this. That should recover
+
+359
+00:34:57,680 --> 00:35:05,200
+ the previous behavior. So we should be able to run the model. And here we can inspect, I have a
+
+360
+00:35:05,200 --> 00:35:13,360
+ or code snippet here, or I iterate over all the layers, I print the name of this class and the
+
+361
+00:35:13,360 --> 00:35:20,000
+ shape. And so we see the shapes as we expect them after every single layer and it's output.
+
+362
+00:35:20,000 --> 00:35:26,960
+ So now let's try to restructure it using our flatten consecutive and do it heroically. So in
+
+363
+00:35:26,960 --> 00:35:33,680
+ particular, we want to flatten consecutive, not just not block size, but just to. And then we want
+
+364
+00:35:33,680 --> 00:35:38,560
+ to process this with linear. Now, then the number of inputs to this linear will not be an embed
+
+365
+00:35:38,560 --> 00:35:45,520
+ times block size. It will now only be an embed times two, 20. This goes through the first layer.
+
+366
+00:35:45,520 --> 00:35:51,680
+ And now we can in principle, just copy paste this. Now the next linear layer should expect
+
+367
+00:35:51,680 --> 00:35:59,760
+ and hidden times two. And the last piece of it should expect and hidden times two again.
+
+368
+00:35:59,760 --> 00:36:07,760
+ So this is sort of like the naive version of it. So running this, we now have a much, much bigger
+
+369
+00:36:07,760 --> 00:36:15,760
+ model. And we should be able to basically just forward the model. And now we can inspect the
+
+370
+00:36:15,760 --> 00:36:21,840
+ numbers in between. So four by 20 was flatten consecutive, the link to four by four by 20.
+
+371
+00:36:21,840 --> 00:36:30,240
+ This was projected into four by four by 200. And then bash arm just worked out of the box. And we
+
+372
+00:36:30,240 --> 00:36:33,680
+ have to verify that bash arm does the correct thing, even though it takes a three dimensional
+
+373
+00:36:33,680 --> 00:36:38,720
+ impedance that have two dimensional input. Then we have 10 H, which is element wise,
+
+374
+00:36:38,720 --> 00:36:44,320
+ then we crushed it again. So flatten consecutively and ended up with a four by two by four hundred now.
+
+375
+00:36:44,320 --> 00:36:51,360
+ Then linear brought it back down to 200, bash arm 10 H. And lastly, we get a four by 400. And we
+
+376
+00:36:51,360 --> 00:36:57,120
+ see that the flatten consecutive for the last flatten here, it squeezed out that dimension of one.
+
+377
+00:36:57,120 --> 00:37:03,600
+ So we only ended up with four by 400. And then linear bash arm 10 H and the last linear layer
+
+378
+00:37:03,600 --> 00:37:08,640
+ to get our logits. And so the logits end up in the same shape as they were before. But now we
+
+379
+00:37:08,640 --> 00:37:14,560
+ actually have a nice three layer neural net. And it basically corresponds to, whoops, sorry,
+
+380
+00:37:14,560 --> 00:37:19,280
+ it basically corresponds exactly to this network now, except only this piece here,
+
+381
+00:37:19,280 --> 00:37:24,000
+ because we only have three layers. Whereas here in this example, there's four layers
+
+382
+00:37:24,720 --> 00:37:30,240
+ with a total receptive field size of 16 characters instead of just eight characters.
+
+383
+00:37:30,240 --> 00:37:35,440
+ So the block size here is 16. So this piece of it is basically implemented here.
+
+384
+00:37:35,440 --> 00:37:42,080
+ Now we just have to kind of figure out some good channel numbers to use here. Now in particular,
+
+385
+00:37:42,080 --> 00:37:47,440
+ I changed the number of hidden units to be 68 in this architecture, because when I use 68,
+
+386
+00:37:47,440 --> 00:37:52,640
+ the number of parameters comes out to be 22,000. So that's exactly the same that we had before.
+
+387
+00:37:52,640 --> 00:37:57,280
+ And we have the same amount of capacity at this neural net in terms of the number of parameters.
+
+388
+00:37:57,280 --> 00:38:00,720
+ But the question is whether we are utilizing those parameters in a more efficient architecture.
+
+389
+00:38:00,720 --> 00:38:07,280
+ So what I did then is I got rid of a lot of the debugging cells here, and I rewind the optimization
+
+390
+00:38:07,280 --> 00:38:13,200
+ and scrolling down to the result. We see that we get the identical performance roughly. So our
+
+391
+00:38:13,200 --> 00:38:19,600
+ validation loss now is 2.029, and previously it was 2.027. So controlling for the number of parameters,
+
+392
+00:38:19,600 --> 00:38:24,640
+ changing from the flat to here, or it was not giving us anything yet. That said, there are two things
+
+393
+00:38:24,640 --> 00:38:30,560
+ to point out. Number one, we didn't really torture the architecture here very much. This is just my
+
+394
+00:38:30,560 --> 00:38:35,200
+ first guess. And there's a bunch of hyperparameters searched that we could do in order in terms of
+
+395
+00:38:35,200 --> 00:38:42,480
+ how we allocate our budget of parameters to what layers. Number two, we still may have a bug inside
+
+396
+00:38:42,480 --> 00:38:50,000
+ the Bashram 1D layer. So let's take a look at that, because it runs, but does it do the right thing.
+
+397
+00:38:50,000 --> 00:38:55,440
+ So I pulled up the layer inspector sort of that we have here, and printed out the shape
+
+398
+00:38:55,440 --> 00:39:01,280
+ along the way. And currently it looks like the Bashram is receiving an input that is 32 by 4 by 68.
+
+399
+00:39:01,280 --> 00:39:06,560
+ And here on the right, I have the current implementation of Bashram that we have right now.
+
+400
+00:39:06,560 --> 00:39:12,080
+ Now this Bashram assumed in the way we wrote it, and at the time that X is two-dimensional.
+
+401
+00:39:12,080 --> 00:39:18,400
+ So it was n by d, where n was the batch size. So that's why we only reduced the mean and
+
+402
+00:39:18,400 --> 00:39:23,120
+ variance over the 0th dimension. But now X will basically become three-dimensional.
+
+403
+00:39:23,120 --> 00:39:26,480
+ So what's happening inside the Bashram layer right now, and how come it's working at all,
+
+404
+00:39:26,480 --> 00:39:30,800
+ and not giving any errors? The reason for that is basically because everything broadcasts
+
+405
+00:39:30,800 --> 00:39:37,280
+ properly, but the Bashram is not doing what we wanted to do. So in particular, let's basically
+
+406
+00:39:37,280 --> 00:39:42,000
+ think through what's happening inside the Bashram, looking at what's happening here.
+
+407
+00:39:42,000 --> 00:39:50,480
+ I have the code here. So we're receiving an input of 32 by 4 by 68. And then we are doing
+
+408
+00:39:50,480 --> 00:39:57,440
+ here, X dot mean, here I have E instead of X. But we're doing the mean over 0. And that's
+
+409
+00:39:57,440 --> 00:40:02,560
+ actually given us one by four by 68. So we're doing the mean only over the very first dimension.
+
+410
+00:40:02,560 --> 00:40:08,320
+ And it's given us a mean and a variance that still maintain this dimension here. So these
+
+411
+00:40:08,320 --> 00:40:13,280
+ means are only taken over 32 numbers in the first dimension. And then when we perform this,
+
+412
+00:40:13,280 --> 00:40:18,560
+ everything broadcasts correctly still. But basically what ends up happening is
+
+413
+00:40:18,560 --> 00:40:22,160
+ when we also look at the running mean,
+
+414
+00:40:22,160 --> 00:40:28,960
+ the shape of it. So I'm looking at the model that layers that's ready, which is the first
+
+415
+00:40:28,960 --> 00:40:33,120
+ Bashram layer, and then looking at whatever the running mean became, and its shape.
+
+416
+00:40:33,120 --> 00:40:39,200
+ The shape of this running mean now is one by four by 68. Right? Instead of it being,
+
+417
+00:40:39,200 --> 00:40:46,800
+ you know, just size of dimension, because we have 68 channels, we expect to have 68 means
+
+418
+00:40:46,800 --> 00:40:51,120
+ and variances that we're maintaining. But actually, we have an array of four by 68.
+
+419
+00:40:51,120 --> 00:40:54,240
+ And so basically what this is telling us is this Bashram is only,
+
+420
+00:40:55,280 --> 00:41:05,200
+ this Bashram is currently working in parallel over four times 68, instead of just 68 channels.
+
+421
+00:41:05,200 --> 00:41:12,080
+ So basically we are maintaining statistics for every one of these four positions individually
+
+422
+00:41:12,080 --> 00:41:17,840
+ and independently. And instead what we want to do is we want to treat this four as a Bash dimension
+
+423
+00:41:17,840 --> 00:41:24,320
+ just like the zero dimension. So as far as the Bashram is concerned, it doesn't want to average,
+
+424
+00:41:24,320 --> 00:41:29,520
+ we don't want to average over 32 numbers, we want to now average over 32 times four numbers
+
+425
+00:41:29,520 --> 00:41:37,680
+ for every single one of these 68 channels. And so let me now remove this. It turns out that when
+
+426
+00:41:37,680 --> 00:41:43,440
+ you look at the documentation of torch dot mean, so let's go to torch dot mean.
+
+427
+00:41:49,600 --> 00:41:54,720
+ In one of its signatures, when we specify the dimension, we see that the dimension here is not
+
+428
+00:41:54,720 --> 00:42:01,040
+ just it can be in or it can also be a tuple of ints. So we can reduce over multiple integers at
+
+429
+00:42:01,040 --> 00:42:05,600
+ the same time over multiple dimensions at the same time. So instead of just reducing over zero,
+
+430
+00:42:05,600 --> 00:42:12,000
+ we can pass in a tuple 01. And here 01 as well. And then what's going to happen is the output,
+
+431
+00:42:12,000 --> 00:42:16,560
+ of course, is going to be the same. But now what's going to happen is because we reduce over 0 and 1,
+
+432
+00:42:17,200 --> 00:42:24,480
+ if we look at in that shape, we see that now we've reduced, we took the mean over both the
+
+433
+00:42:24,480 --> 00:42:29,280
+ zero and the first dimension. So we're just getting 68 numbers and a bunch of spurious
+
+434
+00:42:29,280 --> 00:42:35,280
+ dimensions here. So now this becomes one by one by 68. And the running mean and the running
+
+435
+00:42:35,280 --> 00:42:39,920
+ variance analogously will become one by one by 68. So even though there are these spurious
+
+436
+00:42:39,920 --> 00:42:45,040
+ dimensions, the current the current the correct thing will happen in that we are only maintaining
+
+437
+00:42:45,040 --> 00:42:50,880
+ means and variances for 64, sorry, for 68 channels. And we're not calculating the mean
+
+438
+00:42:50,880 --> 00:42:57,360
+ variance across 32 times four dimensions. So that's exactly what we want. And let's change the
+
+439
+00:42:57,360 --> 00:43:02,240
+ implementation of batch number one D that we have, so that it can take in two dimensional or
+
+440
+00:43:02,240 --> 00:43:06,640
+ three dimensional inputs and perform accordingly. So at the end of the day, the fix is relatively
+
+441
+00:43:06,640 --> 00:43:12,960
+ straightforward. Basically, the dimension we want to reduce over is either zero or the tuple zero
+
+442
+00:43:12,960 --> 00:43:18,400
+ and one, depending on the dimensionality of acts. So if x dot and dim is two, so it's a two-dimensional
+
+443
+00:43:18,400 --> 00:43:23,840
+ tensor, then dimension we want to reduce over is just the integer zero. L of x dot and dim is
+
+444
+00:43:23,840 --> 00:43:29,200
+ three. So it's a three dimensional tensor, then the dims, we're going to assume are zero and one
+
+445
+00:43:29,200 --> 00:43:34,480
+ that we want to reduce over. And then here we just pass in dim. And if the dimensionality
+
+446
+00:43:34,480 --> 00:43:40,720
+ of acts is anything else, we'll now get an error, which is good. So that should be the fix. Now,
+
+447
+00:43:40,720 --> 00:43:45,120
+ I want to point out one more thing. We're actually departing from the API of PyTorch here a little
+
+448
+00:43:45,120 --> 00:43:50,480
+ bit, because when you come to batch room on D PyTorch, you can scroll down and you can see that the
+
+449
+00:43:50,480 --> 00:43:55,920
+ input to this layer can either be n by C, where n is the batch size and C is the number of features
+
+450
+00:43:55,920 --> 00:44:01,120
+ or channels, or it actually does accept three dimensional inputs, but it expects it to be n by
+
+451
+00:44:01,120 --> 00:44:08,720
+ C by L, where L is say like the sequence length or something like that. So this is a problem because
+
+452
+00:44:08,720 --> 00:44:14,160
+ you see how C is nested here in the middle. And so when it gets three dimensional inputs,
+
+453
+00:44:14,160 --> 00:44:20,800
+ this batch room layer will reduce over zero and two instead of zero and one. So basically,
+
+454
+00:44:20,800 --> 00:44:27,360
+ PyTorch batch number one D layer assumes that C will always be the first dimension. Whereas we
+
+455
+00:44:27,360 --> 00:44:32,480
+ assume here that C is the last dimension, and there are some number of batch dimensionals beforehand.
+
+456
+00:44:34,960 --> 00:44:41,760
+ And so it expects n by C or n by C by L, we expect n by C or n by L by C.
+
+457
+00:44:41,760 --> 00:44:50,000
+ And so it's a deviation. I think it's okay. I prefer it this way, honestly. So this is the way
+
+458
+00:44:50,000 --> 00:44:54,160
+ that we will keep it for our purposes. So I redefined the layers, re-initialized the neural
+
+459
+00:44:54,160 --> 00:44:59,680
+ nut, and did a single forward pass with a break just for one step. Looking at the shapes along the
+
+460
+00:44:59,680 --> 00:45:03,920
+ way, they're, of course, identical. All the shapes are the same. By the way, we see that things are
+
+461
+00:45:03,920 --> 00:45:07,840
+ actually working as we want them to now, is that when we look at the batch room layer,
+
+462
+00:45:07,840 --> 00:45:13,600
+ the running mean shape is now one by one by 68. So we're only maintaining 68 means for every one of
+
+463
+00:45:13,600 --> 00:45:18,720
+ our channels, and we're treating both the 0th and the first dimension as a batch dimension,
+
+464
+00:45:18,720 --> 00:45:22,480
+ which is exactly what we want. So let me retrain the neural nut now. Okay, so I retrained in your
+
+465
+00:45:22,480 --> 00:45:26,320
+ alert with the bug fix, we get a nice curve. And when we look at the validation performance,
+
+466
+00:45:26,320 --> 00:45:32,000
+ we do actually see a slight improvement. So it went from 2.0 to 9 to 2.0 to 2. So basically,
+
+467
+00:45:32,000 --> 00:45:35,920
+ the bug inside the batch room was holding us back like a little bit, it looks like.
+
+468
+00:45:35,920 --> 00:45:40,480
+ And we are getting a tiny improvement now, but it's not clear if this is statistically significant.
+
+469
+00:45:40,480 --> 00:45:46,880
+ And the reason we slightly expect an improvement is because we're not maintaining so many different
+
+470
+00:45:46,880 --> 00:45:52,160
+ means and variances that are only estimated using using 32 numbers effectively. Now we are
+
+471
+00:45:52,160 --> 00:45:57,200
+ estimating them using 32 times four numbers. So you just have a lot more numbers that go into any
+
+472
+00:45:57,200 --> 00:46:02,800
+ one estimate of the mean and variance. And it allows things to be a bit more stable and less wiggly
+
+473
+00:46:02,800 --> 00:46:08,880
+ inside those estimates of those statistics. So pretty nice. With this more general architecture
+
+474
+00:46:08,880 --> 00:46:13,440
+ in place, we are now set up to push the performance further by increasing the size of the network.
+
+475
+00:46:13,440 --> 00:46:19,520
+ So for example, I bumped up the number of embeddings to 24 instead of 10, and also increased number
+
+476
+00:46:19,520 --> 00:46:24,960
+ of hidden units. But using the exact same architecture, we now have 76,000 parameters.
+
+477
+00:46:24,960 --> 00:46:29,680
+ And the training takes a lot longer, but we do get a nice curve. And then when you actually
+
+478
+00:46:29,680 --> 00:46:34,640
+ evaluate the performance, we are now getting validation performance of 1.993. So we've crossed
+
+479
+00:46:34,640 --> 00:46:40,400
+ over the 2.0 sort of territory. And we're at about 1.99, but we are starting to have to
+
+480
+00:46:40,400 --> 00:46:45,840
+ wait quite a bit longer. And we're a little bit in the dark with respect to the correct setting
+
+481
+00:46:45,840 --> 00:46:49,040
+ of the hyper parameters here and the learning rates and so on, because the experiments are
+
+482
+00:46:49,040 --> 00:46:53,600
+ starting to take longer to train. And so we are missing sort of like an experimental harness
+
+483
+00:46:53,600 --> 00:46:58,320
+ on which we could run a number of experiments and really tune this architecture very well.
+
+484
+00:46:58,320 --> 00:47:02,880
+ So I'd like to conclude now with a few notes. We basically improved our performance from a
+
+485
+00:47:02,880 --> 00:47:08,240
+ starting of 2.1 down to 1.9. But I don't want that to be the focus because honestly, we're kind of
+
+486
+00:47:08,240 --> 00:47:12,400
+ in the dark. We have no experimental harness. We're just guessing and checking. And this whole
+
+487
+00:47:12,400 --> 00:47:16,720
+ thing is terrible. We're just looking at the training loss. Normally you want to look at both the
+
+488
+00:47:16,720 --> 00:47:21,040
+ training and the validation loss together. The whole thing looks different if you're actually
+
+489
+00:47:21,040 --> 00:47:27,200
+ trying to squeeze out numbers. That said, we did implement this architecture from the WaitNet paper,
+
+490
+00:47:27,200 --> 00:47:33,840
+ but we did not implement this specific forward pass-off it where you have a more complicated
+
+491
+00:47:33,840 --> 00:47:40,160
+ linear layer sort of that is this gated linear layer kind of. And there's residual connections
+
+492
+00:47:40,160 --> 00:47:44,320
+ and skip connections and so on. So we did not implement that. We just implemented this structure.
+
+493
+00:47:44,320 --> 00:47:49,680
+ I would like to briefly hint or preview how what we've done here relates to convolutional neural
+
+494
+00:47:49,680 --> 00:47:55,840
+ networks as used in the WaitNet paper. And basically the use of convolutions is strictly for efficiency.
+
+495
+00:47:55,840 --> 00:48:02,000
+ It doesn't actually change the model we've implemented. So here, for example, let me look at a specific
+
+496
+00:48:02,000 --> 00:48:07,920
+ name to work with an example. So there's a name in our training set and it's DeAndre. And it has
+
+497
+00:48:07,920 --> 00:48:14,160
+ seven letters. So that is eight independent examples in our model. So all these rows here are independent
+
+498
+00:48:14,160 --> 00:48:20,400
+ examples of DeAndre. Now you can forward of course any one of these rows independently. So I can
+
+499
+00:48:20,400 --> 00:48:27,360
+ take my model and call it on any individual index. Notice by the way here, I'm being a little bit
+
+500
+00:48:27,360 --> 00:48:35,920
+ tricky. The reason for this is that extra at seven dot shape is just one dimensional array of eight.
+
+501
+00:48:35,920 --> 00:48:40,320
+ So you can't actually call the model on it. You're going to get an error because there's no batch
+
+502
+00:48:40,320 --> 00:48:49,200
+ dimension. So when you do extra at list of seven, then the shape of this becomes one by eight. So I get
+
+503
+00:48:49,200 --> 00:48:57,120
+ an extra batch dimension of one, and then we can forward the model. So that forwards a single example.
+
+504
+00:48:57,120 --> 00:49:02,480
+ And you might imagine that you actually may well know forward all of these eight at the same time.
+
+505
+00:49:02,480 --> 00:49:09,120
+ So preallocating some memory and then doing a for loop H times and forwarding all of those eight
+
+506
+00:49:09,120 --> 00:49:14,400
+ here will give us all the logits in all these different cases. Now for us with the model as
+
+507
+00:49:14,400 --> 00:49:19,360
+ we've implemented it right now, this is eight independent calls to our model. But what convolutions
+
+508
+00:49:19,360 --> 00:49:24,960
+ allow you to do is it allow you to basically slide this model efficiently over the input sequence.
+
+509
+00:49:24,960 --> 00:49:32,880
+ And so this for loop can be done not outside in Python, but inside of kernels in CUDA. And so
+
+510
+00:49:32,880 --> 00:49:37,840
+ this for loop gets hidden into the convolution. So the convolution basically you can cover this
+
+511
+00:49:37,840 --> 00:49:44,720
+ it's a for loop applying a little linear filter over space of some input sequence. And in our case,
+
+512
+00:49:44,720 --> 00:49:48,480
+ the space we're interested in is one dimensional, and we're interested in sliding these filters
+
+513
+00:49:48,480 --> 00:49:56,320
+ over the input data. So this diagram actually is fairly good as well. Basically what we've done
+
+514
+00:49:56,320 --> 00:50:01,200
+ is here they are highlighting in black one individual one single sort of like tree of this
+
+515
+00:50:01,200 --> 00:50:08,560
+ calculation. So just calculating the single output example here. And so this is basically what we've
+
+516
+00:50:08,560 --> 00:50:14,320
+ implemented here. We've implemented a single this black structure. We've implemented that and
+
+517
+00:50:14,320 --> 00:50:19,200
+ calculated a single output like a single example. But what convolutions allow you to do is it
+
+518
+00:50:19,200 --> 00:50:24,720
+ allows you to take this black structure and kind of like slide it over the input sequence
+
+519
+00:50:24,720 --> 00:50:31,600
+ here and calculate all of these orange outputs at the same time. Or here that corresponds to
+
+520
+00:50:31,600 --> 00:50:37,520
+ calculating all of these outputs of at all the positions of the Andra at the same time.
+
+521
+00:50:37,520 --> 00:50:44,000
+ And the reason that this is much more efficient is because number one as I mentioned the for loop
+
+522
+00:50:44,000 --> 00:50:49,840
+ is inside the CUDA kernels in the sliding. So that makes it efficient. But number two,
+
+523
+00:50:49,840 --> 00:50:54,960
+ notice the variable reuse here. For example, if we look at this circle, this node here, this node
+
+524
+00:50:54,960 --> 00:51:01,920
+ here is the right child of this node, but it's also the left child of the node here. And so basically
+
+525
+00:51:01,920 --> 00:51:09,280
+ this node and its value is used twice. And so right now in this naive way, we'd have to recalculate it.
+
+526
+00:51:09,280 --> 00:51:15,040
+ But here we are allowed to reuse it. So in the convolutional neural network, you think of these
+
+527
+00:51:15,040 --> 00:51:21,280
+ linear layers that we have it up above as filters. And we take these filters and their linear filters
+
+528
+00:51:21,280 --> 00:51:26,160
+ and you slide them over input sequence. And we calculate the first layer and then the second layer
+
+529
+00:51:26,160 --> 00:51:30,640
+ and then third layer and then the output layer of the sandwich. And it's all done very efficiently
+
+530
+00:51:30,640 --> 00:51:35,360
+ using these convolutions. So we're going to cover that in a future video. The second thing I hope
+
+531
+00:51:35,360 --> 00:51:40,400
+ you took away from this video is you've seen me basically implement all of these layer
+
+532
+00:51:40,400 --> 00:51:45,760
+ Lego building blocks or module building blocks. And I'm implementing them over here. And we've
+
+533
+00:51:45,760 --> 00:51:51,200
+ implemented a number of layers together. And we've also implementing these containers. And we've
+
+534
+00:51:51,200 --> 00:51:57,040
+ overall pytorchified our code quite a bit more. Now basically what we're doing here is we're
+
+535
+00:51:57,040 --> 00:52:03,680
+ re-implementing Torched.nn, which is the neural networks library on top of Torched.tensor. And it
+
+536
+00:52:03,680 --> 00:52:08,960
+ looks very much like this, except it is much better because it's in pytorch instead of a
+
+537
+00:52:08,960 --> 00:52:14,160
+ jinkling my jinkling notebook. So I think going forward, I will probably have considered us having
+
+538
+00:52:14,160 --> 00:52:19,680
+ unlocked Torched.nn. We understand roughly what's in there, how these modules work, how they're
+
+539
+00:52:19,680 --> 00:52:25,680
+ nested, and what they're doing on top of Torched.tensor. So hopefully we'll just switch over and
+
+540
+00:52:25,680 --> 00:52:30,240
+ continue and start using Torched.nn directly. The next thing I hope you got a bit of a sense of
+
+541
+00:52:30,240 --> 00:52:35,120
+ is what the development process of building deep neural networks looks like, which I think was
+
+542
+00:52:35,120 --> 00:52:40,320
+ relatively representative to some extent. So number one, we are spending a lot of time in the
+
+543
+00:52:40,320 --> 00:52:45,840
+ documentation page of pytorch. And we're reading through all the layers, looking at the documentations,
+
+544
+00:52:45,840 --> 00:52:51,600
+ where are the shapes of the inputs, what can they be, what does the layer do, and so on.
+
+545
+00:52:51,600 --> 00:52:57,760
+ Unfortunately, I have to say the pytorch documentation is not very good. They spend a ton of time on
+
+546
+00:52:57,760 --> 00:53:02,320
+ hardcore engineering of all kinds of distributed primitives, etc. But as far as I can tell,
+
+547
+00:53:02,320 --> 00:53:08,240
+ no one is maintaining documentation. It will lie to you, it will be wrong, it will be incomplete,
+
+548
+00:53:08,240 --> 00:53:13,680
+ it will be unclear. So unfortunately, it is what it is, and you just kind of do your best
+
+549
+00:53:13,680 --> 00:53:23,040
+ with what they've given us. Number two, the other thing that I hope you got a sense of is
+
+550
+00:53:23,040 --> 00:53:27,440
+ there's a ton of trying to make the shapes work. And there's a lot of gymnastics around these
+
+551
+00:53:27,440 --> 00:53:32,160
+ multi-dimensional arrays. And are they two-dimensional, three-dimensional, four-dimensional? What layers
+
+552
+00:53:32,160 --> 00:53:39,280
+ take what shapes? Is it NCL or NLC? And you're permuting and viewing, and it just can get pretty
+
+553
+00:53:39,280 --> 00:53:44,720
+ messy. And so that brings me to number three. I very often prototype these layers and implementations
+
+554
+00:53:44,720 --> 00:53:49,200
+ in Jupyter Notebooks and make sure that all the shapes work out. And I'm spending a lot of time,
+
+555
+00:53:49,200 --> 00:53:54,000
+ basically, babysitting the shapes and making sure everything is correct. And then once I'm satisfied
+
+556
+00:53:54,000 --> 00:53:57,920
+ with the functionality in a Jupyter Notebook, I will take that code and copy paste it into my
+
+557
+00:53:57,920 --> 00:54:04,240
+ repository of actual code that I'm training with. And so then I'm working with VS code on a side.
+
+558
+00:54:04,240 --> 00:54:08,800
+ So I usually have Jupyter Notebook and VS code. I develop in Jupyter Notebook, I paste into VS code,
+
+559
+00:54:08,800 --> 00:54:13,520
+ and then I kick off experiments from the repo, of course, from the code repository.
+
+560
+00:54:13,520 --> 00:54:18,000
+ So that's roughly some notes on the development process of working with neural ones.
+
+561
+00:54:18,000 --> 00:54:22,960
+ Lastly, I think this lecture unlocks a lot of potential further lectures, because number one,
+
+562
+00:54:22,960 --> 00:54:27,200
+ we have to convert our neural network to actually use these dilated causal convolutional layers
+
+563
+00:54:28,000 --> 00:54:34,080
+ to implement in the comment. Number two, I potentially started to get into what this means,
+
+564
+00:54:34,080 --> 00:54:40,320
+ where our residual connections and skip connections and why are they useful. Number three, as I mentioned,
+
+565
+00:54:40,320 --> 00:54:44,320
+ we don't have any experimental harness. So right now I'm just guessing, checking everything.
+
+566
+00:54:44,320 --> 00:54:48,320
+ This is not representative of typical deep learning workflows. You have to set up your
+
+567
+00:54:48,320 --> 00:54:52,640
+ evaluation harness. You can kick off experiments. You have lots of arguments that your script can
+
+568
+00:54:52,640 --> 00:54:57,040
+ take. You're kicking off a lot of experimentation. You're looking at a lot of plots of training
+
+569
+00:54:57,040 --> 00:55:00,800
+ evaluation losses, and you're looking at what is working and what is not working.
+
+570
+00:55:00,800 --> 00:55:05,360
+ And you're working on this population level, and you're doing all these hyperparameters searches.
+
+571
+00:55:05,360 --> 00:55:11,040
+ And so we've done none of that so far. So how to set that up and how to make it good,
+
+572
+00:55:11,040 --> 00:55:16,000
+ I think is a whole another topic. And number three, we should probably cover recurrent neural
+
+573
+00:55:16,000 --> 00:55:22,560
+ networks, our NENS, LSTMs, grooves, and of course, transformers. So many places to go,
+
+574
+00:55:23,600 --> 00:55:29,200
+ and we'll cover that in the future. For now, sorry, I forgot to say that. If you are interested,
+
+575
+00:55:29,200 --> 00:55:34,640
+ I think it is kind of interesting to try to beat this number 1.993, because I really haven't
+
+576
+00:55:34,640 --> 00:55:38,240
+ tried a lot of experimentation here, and there's quite a bit of long-engue fruit potentially,
+
+577
+00:55:38,240 --> 00:55:43,440
+ to still purchase further. So I haven't tried any other ways of allocating these channels in this
+
+578
+00:55:43,440 --> 00:55:49,200
+ neural net. Maybe the number of dimensions for the embedding is all wrong. Maybe it's possible
+
+579
+00:55:49,200 --> 00:55:53,360
+ to actually take the original network with just one-handed layer and make it big enough and
+
+580
+00:55:53,360 --> 00:55:59,520
+ actually beat my fancy hierarchical network. It's not obvious. It'll be kind of embarrassing if this
+
+581
+00:55:59,520 --> 00:56:04,160
+ did not do better, even once you torture it a little bit. Maybe you can read the weight net paper and
+
+582
+00:56:04,160 --> 00:56:07,920
+ try to figure out how some of these layers work and implement them yourselves using what we have.
+
+583
+00:56:07,920 --> 00:56:13,760
+ And of course, you can always tune some of the initialization or some of the optimization
+
+584
+00:56:13,760 --> 00:56:18,080
+ and see if we can improve it that way. So I'd be curious if people can come up with some ways to
+
+585
+00:56:18,080 --> 00:56:21,280
+ beat this and yeah that's it for now. Bye.
+

@@ -1,0 +1,6808 @@
+1
+00:00:00,000 --> 00:00:02,000
+ Hi everyone, hope you're well.
+
+2
+00:00:02,000 --> 00:00:06,000
+ And next up what I'd like to do is I'd like to build out MakeMore.
+
+3
+00:00:06,000 --> 00:00:11,000
+ Like Micrograd before it, MakeMore is a repository that I have on my GitHub webpage.
+
+4
+00:00:11,000 --> 00:00:16,000
+ You can look at it. But just like with Micrograd, I'm going to build it out step by step
+
+5
+00:00:16,000 --> 00:00:20,000
+ and I'm going to spell everything out. So we're going to build it out slowly and together.
+
+6
+00:00:20,000 --> 00:00:22,000
+ Now, what is MakeMore?
+
+7
+00:00:22,000 --> 00:00:27,000
+ MakeMore, as the name suggests, makes more of things that you give it.
+
+8
+00:00:27,000 --> 00:00:32,000
+ So here's an example. Names.txt is an example data set to MakeMore.
+
+9
+00:00:32,000 --> 00:00:38,000
+ And when you look at names.txt, you'll find that it's a very large data set of names.
+
+10
+00:00:38,000 --> 00:00:44,000
+ So here's lots of different types of names. In fact, I believe there are 32,000 names
+
+11
+00:00:44,000 --> 00:00:47,000
+ that I've sort of found randomly on the government website.
+
+12
+00:00:47,000 --> 00:00:54,000
+ And if you train MakeMore on this data set, it will learn to make more of things like this.
+
+13
+00:00:54,000 --> 00:01:00,000
+ And in particular, in this case, that will mean more things that sound name-like,
+
+14
+00:01:00,000 --> 00:01:05,000
+ but are actually unique names. And maybe if you have a baby and you're trying to assign a name,
+
+15
+00:01:05,000 --> 00:01:09,000
+ maybe you're looking for a cool new sounding unique name, MakeMore might help you.
+
+16
+00:01:09,000 --> 00:01:16,000
+ So here are some example generations from the neural network once we train it on our data set.
+
+17
+00:01:16,000 --> 00:01:19,000
+ So here's some example unique names that it will generate.
+
+18
+00:01:19,000 --> 00:01:25,000
+ Dontal, Iraq, Zendy, and so on.
+
+19
+00:01:25,000 --> 00:01:30,000
+ And so all these sort of sound name-like, but they're not, of course, names.
+
+20
+00:01:30,000 --> 00:01:34,000
+ So under the hood, MakeMore is a character-level language model.
+
+21
+00:01:34,000 --> 00:01:39,000
+ So what that means is that it is treating every single line here as an example.
+
+22
+00:01:39,000 --> 00:01:45,000
+ And within each example, it's treating them all as sequences of individual characters.
+
+23
+00:01:45,000 --> 00:01:51,000
+ So R-E-E-S-E is this example. And that's the sequence of characters.
+
+24
+00:01:51,000 --> 00:01:54,000
+ And that's the level in which we are building out MakeMore.
+
+25
+00:01:54,000 --> 00:02:00,000
+ And what it means to be a character-level language model then is that it's just sort of modeling those sequences of characters
+
+26
+00:02:00,000 --> 00:02:03,000
+ and it knows how to predict the next character in the sequence.
+
+27
+00:02:03,000 --> 00:02:08,000
+ Now, we're actually going to implement a large number of character-level language models
+
+28
+00:02:08,000 --> 00:02:12,000
+ in terms of the neural networks that are involved in predicting the next character in a sequence.
+
+29
+00:02:12,000 --> 00:02:17,000
+ So very simple, bygram and bag-of-word models, multi-level perceptrons,
+
+30
+00:02:17,000 --> 00:02:21,000
+ recurring neural networks, all the way to modern transformers.
+
+31
+00:02:21,000 --> 00:02:28,000
+ In fact, a transformer that we will build will be basically the equivalent transformer to GPT-2, if you have heard of GPT.
+
+32
+00:02:28,000 --> 00:02:31,000
+ So that's kind of a big deal. It's a modern network.
+
+33
+00:02:31,000 --> 00:02:36,000
+ And by the end of the series, you will actually understand how that works on the level of characters.
+
+34
+00:02:36,000 --> 00:02:41,000
+ Now, to give you a sense of the extensions here, after characters, we will probably spend some time on the next level.
+
+35
+00:02:41,000 --> 00:02:47,000
+ We will probably spend some time on the word level so that we can generate documents of words, not just little segments of characters,
+
+36
+00:02:47,000 --> 00:02:51,000
+ but we can generate entire large, much larger documents.
+
+37
+00:02:51,000 --> 00:02:58,000
+ And then we're probably going to go into images and image text networks, such as Dali, Stable Diffusion and so on.
+
+38
+00:02:58,000 --> 00:03:03,000
+ But for now, we have to start here, character-level language modeling. Let's go.
+
+39
+00:03:03,000 --> 00:03:07,000
+ So like before, we are starting with a completely blank, duper-nold bit page.
+
+40
+00:03:07,000 --> 00:03:11,000
+ The first thing is I would like to basically load up the dataset, names.txt.
+
+41
+00:03:11,000 --> 00:03:15,000
+ So we're going to open up names.txt for reading.
+
+42
+00:03:15,000 --> 00:03:19,000
+ And we're going to read in everything into a massive string.
+
+43
+00:03:19,000 --> 00:03:24,000
+ And then because it's a massive string, we'd only like the individual words and put them in the list.
+
+44
+00:03:24,000 --> 00:03:31,000
+ So let's call split lines on that string to get all of our words as a Python list of strings.
+
+45
+00:03:31,000 --> 00:03:35,000
+ So basically, we can look at, for example, the first 10 words.
+
+46
+00:03:35,000 --> 00:03:41,000
+ And we have that it's a list of Emma, Olivia, Eva, and so on.
+
+47
+00:03:41,000 --> 00:03:46,000
+ And if we look at the top of the page here, that is indeed what we see.
+
+48
+00:03:46,000 --> 00:03:49,000
+ So that's good.
+
+49
+00:03:49,000 --> 00:03:54,000
+ This list actually makes me feel that this is probably sorted by frequency.
+
+50
+00:03:54,000 --> 00:03:59,000
+ But, okay, so these are the words.
+
+51
+00:03:59,000 --> 00:04:02,000
+ Now, we'd like to actually learn a little bit more about this dataset.
+
+52
+00:04:02,000 --> 00:04:04,000
+ Let's look at the total number of words.
+
+53
+00:04:04,000 --> 00:04:06,000
+ We expect this to be roughly 32,000.
+
+54
+00:04:06,000 --> 00:04:09,000
+ And then what is the, for example, shortest word?
+
+55
+00:04:09,000 --> 00:04:14,000
+ So min of, line of each word for w in words.
+
+56
+00:04:14,000 --> 00:04:18,000
+ So the shortest word will be length two.
+
+57
+00:04:18,000 --> 00:04:21,000
+ And max of 1w for w in words.
+
+58
+00:04:21,000 --> 00:04:25,000
+ So the longest word will be 15 characters.
+
+59
+00:04:25,000 --> 00:04:27,000
+ So let's now think through our very first language model.
+
+60
+00:04:27,000 --> 00:04:32,000
+ As I mentioned, a character level language model is predicting the next character in a sequence,
+
+61
+00:04:32,000 --> 00:04:36,000
+ given already some concrete sequence of characters before it.
+
+62
+00:04:36,000 --> 00:04:45,000
+ Now, what we have to realize here is that every single word here, like a zabella, is actually quite a few examples packed in to that single word.
+
+63
+00:04:45,000 --> 00:04:50,000
+ Because what is an existence of a word like a zabella in the dataset telling us really?
+
+64
+00:04:50,000 --> 00:04:58,000
+ It's saying that the character i is a very likely character to come first in a sequence of a name.
+
+65
+00:04:58,000 --> 00:05:04,000
+ The character s is likely to come after i.
+
+66
+00:05:04,000 --> 00:05:07,000
+ The character a is likely to come after i s.
+
+67
+00:05:07,000 --> 00:05:11,000
+ The character b is very likely to come after i s a.
+
+68
+00:05:11,000 --> 00:05:14,000
+ And so on all the way to a following as a bell.
+
+69
+00:05:14,000 --> 00:05:17,000
+ And then there's one more example actually packed in here.
+
+70
+00:05:17,000 --> 00:05:23,000
+ And that is that after there's a zabella, the word is very likely to end.
+
+71
+00:05:23,000 --> 00:05:29,000
+ So that's one more sort of explicit piece of information that we have here, that we have to be careful with.
+
+72
+00:05:29,000 --> 00:05:38,000
+ And so there's a lot packed into a single individual word in terms of the statistical structure of what's likely to follow in these character sequences.
+
+73
+00:05:38,000 --> 00:05:40,000
+ And then of course we don't have just an individual word.
+
+74
+00:05:40,000 --> 00:05:42,000
+ We actually have 32,000 of these.
+
+75
+00:05:42,000 --> 00:05:44,000
+ And so there's a lot of structure here to model.
+
+76
+00:05:44,000 --> 00:05:50,000
+ Now in the beginning what I'd like to start with is I'd like to start with building a by-gram language model.
+
+77
+00:05:50,000 --> 00:05:56,000
+ Now in a by-gram language model we're always working with just two characters at a time.
+
+78
+00:05:56,000 --> 00:06:03,000
+ So we're only looking at one character that we are given and we're trying to predict the next character in the sequence.
+
+79
+00:06:03,000 --> 00:06:09,000
+ So what characters are likely to follow are, what characters are likely to follow, a, and so on.
+
+80
+00:06:09,000 --> 00:06:13,000
+ And we're just modeling that kind of a little local structure.
+
+81
+00:06:13,000 --> 00:06:17,000
+ And we're forgetting the fact that we may have a lot more information.
+
+82
+00:06:17,000 --> 00:06:20,000
+ We're always just looking at the previous character to predict the next one.
+
+83
+00:06:20,000 --> 00:06:24,000
+ So it's a very simple and weak language model, but I think it's a great place to start.
+
+84
+00:06:24,000 --> 00:06:28,000
+ So now let's begin by looking at these by-grams in our dataset and what they look like.
+
+85
+00:06:28,000 --> 00:06:31,000
+ And these by-grams again are just two characters in a row.
+
+86
+00:06:31,000 --> 00:06:36,000
+ So for W and words, each W here is an individual word string.
+
+87
+00:06:36,000 --> 00:06:43,000
+ We want to iterate for, we want to iterate this word with consecutive characters.
+
+88
+00:06:43,000 --> 00:06:46,000
+ So two characters at a time sliding in through the word.
+
+89
+00:06:46,000 --> 00:06:52,000
+ Now a interesting nice way, cute way to do this in Python by the way, is doing something like this.
+
+90
+00:06:52,000 --> 00:06:59,000
+ For character one, character two in zip of W and W at one.
+
+91
+00:06:59,000 --> 00:07:01,000
+ One call.
+
+92
+00:07:01,000 --> 00:07:04,000
+ Print, character one, character two.
+
+93
+00:07:04,000 --> 00:07:07,000
+ And let's not do all the words, let's just do the first three words.
+
+94
+00:07:07,000 --> 00:07:10,000
+ And I'm going to show you in a second how this works.
+
+95
+00:07:10,000 --> 00:07:15,000
+ But for now basically as an example, let's just do the very first word alone, Emma.
+
+96
+00:07:15,000 --> 00:07:18,000
+ You see how we have a Emma?
+
+97
+00:07:18,000 --> 00:07:21,000
+ And this will just print EM, MMA.
+
+98
+00:07:21,000 --> 00:07:25,000
+ And the reason this works is because W is the string Emma.
+
+99
+00:07:25,000 --> 00:07:28,000
+ W at one column is the string MMA.
+
+100
+00:07:28,000 --> 00:07:37,000
+ And zip takes two iterators and it pairs them up and then creates an iterator over the tuples of their consecutive entries.
+
+101
+00:07:37,000 --> 00:07:43,000
+ And if any one of these lists is shorter than the other, then it will just halt and return.
+
+102
+00:07:43,000 --> 00:07:50,000
+ So basically that's why we return EM, MMM, MMA.
+
+103
+00:07:50,000 --> 00:07:56,000
+ But then because this iterator, second one here, runs out of elements, zip just ends.
+
+104
+00:07:56,000 --> 00:07:58,000
+ And that's why we only get these tuples.
+
+105
+00:07:58,000 --> 00:08:00,000
+ So pretty cute.
+
+106
+00:08:00,000 --> 00:08:03,000
+ So these are the consecutive elements in the first word.
+
+107
+00:08:03,000 --> 00:08:08,000
+ Now we have to be careful because we actually have more information here than just these three examples.
+
+108
+00:08:08,000 --> 00:08:15,000
+ As I mentioned, we know that E is the, is very likely to come first and we know that A in this case is coming last.
+
+109
+00:08:15,000 --> 00:08:23,000
+ So one way to do this is basically we're going to create a special array here, our characters.
+
+110
+00:08:23,000 --> 00:08:27,000
+ And we're going to hallucinate a special start token here.
+
+111
+00:08:27,000 --> 00:08:32,000
+ I'm going to call it like special start.
+
+112
+00:08:32,000 --> 00:08:41,000
+ So this is a list of one element plus W and then plus a special end character.
+
+113
+00:08:41,000 --> 00:08:50,000
+ And the reason I'm wrapping the list of W here is because W is a string Emma list of W will just have the individual characters in the list.
+
+114
+00:08:50,000 --> 00:08:59,000
+ And then doing this again now, but not iterating over W's but over the characters will give us something like this.
+
+115
+00:08:59,000 --> 00:09:08,000
+ So E is likely, so this is a by gram of the start character and E. And this is a by gram of the A in the special end character.
+
+116
+00:09:08,000 --> 00:09:14,000
+ And now we can look at, for example, what this looks like for Olivia or Eva.
+
+117
+00:09:14,000 --> 00:09:20,000
+ And indeed, we can actually potentially do this for the entire data set, but we won't print that. It's going to be too much.
+
+118
+00:09:20,000 --> 00:09:24,000
+ But these are the individual character by grams and we can print them.
+
+119
+00:09:24,000 --> 00:09:34,000
+ Now, in order to learn the statistics about which characters are likely to follow other characters, the simplest way in the by gram language models is to simply do it by counting.
+
+120
+00:09:34,000 --> 00:09:41,000
+ So we're basically just going to count how often any one of these combinations occurs in the training set in these words.
+
+121
+00:09:41,000 --> 00:09:47,000
+ So we're going to need some kind of a dictionary that's going to maintain some counts for every one of these by grams.
+
+122
+00:09:47,000 --> 00:09:52,000
+ So let's use a dictionary B and this will map these by grams.
+
+123
+00:09:52,000 --> 00:09:55,000
+ So by gram is a tuple of character on character two.
+
+124
+00:09:55,000 --> 00:10:04,000
+ And then B at by gram will be B dot get of by gram, which is basically the same as B at by gram.
+
+125
+00:10:04,000 --> 00:10:13,000
+ But in the case that by gram is not in the dictionary B, we would like to buy default return zero plus one.
+
+126
+00:10:13,000 --> 00:10:18,000
+ So this will basically add up all the by grams and count how often they occur.
+
+127
+00:10:18,000 --> 00:10:22,000
+ Let's get rid of printing or rather.
+
+128
+00:10:22,000 --> 00:10:27,000
+ Let's keep the printing and let's just inspect what B is in this case.
+
+129
+00:10:27,000 --> 00:10:30,000
+ And we see that many by grams occur just a single time.
+
+130
+00:10:30,000 --> 00:10:33,000
+ This one allegedly occurred three times.
+
+131
+00:10:33,000 --> 00:10:38,000
+ So a was an ending character three times and that's true for all of these words.
+
+132
+00:10:38,000 --> 00:10:42,000
+ All of Emma, Olivia and Eva and with a.
+
+133
+00:10:42,000 --> 00:10:46,000
+ So that's why this occurred three times.
+
+134
+00:10:46,000 --> 00:10:51,000
+ Now let's do it for all the words.
+
+135
+00:10:51,000 --> 00:10:55,000
+ Oops, I should not have printed it.
+
+136
+00:10:55,000 --> 00:10:57,000
+ I'm going to erase that.
+
+137
+00:10:57,000 --> 00:10:59,000
+ Let's kill this.
+
+138
+00:10:59,000 --> 00:11:04,000
+ Let's just run and now B will have the statistics of the entire data set.
+
+139
+00:11:04,000 --> 00:11:08,000
+ So these are the counts across all the words of the individual by grams.
+
+140
+00:11:08,000 --> 00:11:13,000
+ And we could, for example, look at some of the most common ones and least common ones.
+
+141
+00:11:13,000 --> 00:11:19,000
+ This kind of grows in Python, but the way to do this, the simplest way I like is we just use B dot items.
+
+142
+00:11:19,000 --> 00:11:25,000
+ B dot items returns the tuples of key value.
+
+143
+00:11:25,000 --> 00:11:30,000
+ In this case, the keys are the character by grams and the values are the counts.
+
+144
+00:11:30,000 --> 00:11:35,000
+ And so then what we want to do is we want to do.
+
+145
+00:11:35,000 --> 00:11:38,000
+ Sort it of this.
+
+146
+00:11:38,000 --> 00:11:43,000
+ But the default sort is on the first.
+
+147
+00:11:43,000 --> 00:11:50,000
+ On the first item of a tuple, but we want to sort by the values, which are the second element of a tuple that is the key value.
+
+148
+00:11:50,000 --> 00:12:04,000
+ So we want to use the key equals lambda that takes the key value and returns the key value at the one, not at zero, but at one, which is the count.
+
+149
+00:12:04,000 --> 00:12:10,000
+ So we want to sort by the count of these elements.
+
+150
+00:12:10,000 --> 00:12:12,000
+ And actually we wanted to go backwards.
+
+151
+00:12:12,000 --> 00:12:18,000
+ So here we have is the by gram Q and R occurs only a single time.
+
+152
+00:12:18,000 --> 00:12:20,000
+ DZ occurred only a single time.
+
+153
+00:12:20,000 --> 00:12:26,000
+ And when we sort this the other way around, we're going to see the most likely by grams.
+
+154
+00:12:26,000 --> 00:12:31,000
+ So we see that N was very often an ending character many, many times.
+
+155
+00:12:31,000 --> 00:12:38,000
+ And apparently N almost always follows an A, and that's a very likely combination as well.
+
+156
+00:12:38,000 --> 00:12:44,000
+ So this is kind of the individual counts that we achieve over the entire data set.
+
+157
+00:12:44,000 --> 00:12:53,000
+ Now it's actually going to be significantly more convenient for us to keep this information in a two dimensional array instead of a Python dictionary.
+
+158
+00:12:53,000 --> 00:12:58,000
+ So we're going to store this information in a 2D array.
+
+159
+00:12:58,000 --> 00:13:05,000
+ And the rows are going to be the first character of the by gram and the columns are going to be the second character.
+
+160
+00:13:05,000 --> 00:13:13,000
+ And each entry in the student mission array will tell us how often that first character follows the second character in the data set.
+
+161
+00:13:13,000 --> 00:13:19,000
+ So in particular the array representation that we're going to use or the library is that of PyTorch.
+
+162
+00:13:19,000 --> 00:13:22,000
+ And PyTorch is a deep learning neural work framework.
+
+163
+00:13:22,000 --> 00:13:30,000
+ But part of it is also this torch.tensor which allows us to create multi dimensional arrays and manipulate them very efficiently.
+
+164
+00:13:30,000 --> 00:13:34,000
+ So let's import PyTorch, which you can do by import torch.
+
+165
+00:13:34,000 --> 00:13:37,000
+ And then we can create arrays.
+
+166
+00:13:37,000 --> 00:13:40,000
+ So let's create an array of zeros.
+
+167
+00:13:40,000 --> 00:13:44,000
+ And we give it a size of this array.
+
+168
+00:13:44,000 --> 00:13:47,000
+ Let's create a 3x5 array as an example.
+
+169
+00:13:47,000 --> 00:13:51,000
+ And this is a 3x5 array of zeros.
+
+170
+00:13:51,000 --> 00:13:56,000
+ And by default you'll notice a.dtype, which is short for data type, is float 32.
+
+171
+00:13:56,000 --> 00:13:59,000
+ So these are single precision floating point numbers.
+
+172
+00:13:59,000 --> 00:14:05,000
+ Because we are going to represent counts, let's actually use dtype as torch.in32.
+
+173
+00:14:05,000 --> 00:14:10,000
+ So these are 32 bit integers.
+
+174
+00:14:10,000 --> 00:14:14,000
+ So now you see that we have integer data inside this tensor.
+
+175
+00:14:14,000 --> 00:14:20,000
+ Now tensors allow us to really manipulate all the individual entries and do it very efficiently.
+
+176
+00:14:20,000 --> 00:14:25,000
+ So for example, if we want to change this bit, we have to index into the tensor.
+
+177
+00:14:25,000 --> 00:14:33,000
+ And in particular, here, this is the first row and the, because it's zero indexed.
+
+178
+00:14:33,000 --> 00:14:39,000
+ So this is row index one and column index 0123.
+
+179
+00:14:39,000 --> 00:14:43,000
+ So at one comma three, we can set that to one.
+
+180
+00:14:43,000 --> 00:14:47,000
+ And then a will have a one over there.
+
+181
+00:14:47,000 --> 00:14:49,000
+ We can of course also do things like this.
+
+182
+00:14:49,000 --> 00:14:52,000
+ So now a will be two over there.
+
+183
+00:14:52,000 --> 00:14:54,000
+ Or three.
+
+184
+00:14:54,000 --> 00:14:57,000
+ And also we can, for example, say a zero zero is five.
+
+185
+00:14:57,000 --> 00:15:00,000
+ And then a will have a five over here.
+
+186
+00:15:00,000 --> 00:15:03,000
+ So that's how we can index into the arrays.
+
+187
+00:15:03,000 --> 00:15:06,000
+ Now, of course, the array that we are interested in is much, much bigger.
+
+188
+00:15:06,000 --> 00:15:10,000
+ So for our purposes, we have 26 letters of the alphabet.
+
+189
+00:15:10,000 --> 00:15:14,000
+ And then we have two special characters, s and e.
+
+190
+00:15:14,000 --> 00:15:19,000
+ So we want 26 plus two or 28 by 28 array.
+
+191
+00:15:19,000 --> 00:15:24,000
+ And let's call it the capital N, because it's going to represent sort of the counts.
+
+192
+00:15:24,000 --> 00:15:27,000
+ Let me erase this stuff.
+
+193
+00:15:27,000 --> 00:15:30,000
+ So that's the array that starts at zeros 28 by 28.
+
+194
+00:15:30,000 --> 00:15:34,000
+ And now let's copy paste this here.
+
+195
+00:15:34,000 --> 00:15:41,000
+ But instead of having a dictionary B, which we're going to erase, we now have an N.
+
+196
+00:15:41,000 --> 00:15:46,000
+ Now the problem here is that we have these characters, which are strings, but we have to now
+
+197
+00:15:46,000 --> 00:15:51,000
+ basically index into a array and we have to index using integers.
+
+198
+00:15:51,000 --> 00:15:55,000
+ So we need some kind of a lookup table from characters to integers.
+
+199
+00:15:55,000 --> 00:15:58,000
+ So let's construct such a character array.
+
+200
+00:15:58,000 --> 00:16:03,000
+ And the way we're going to do this is we're going to take all the words, which is a list of strings.
+
+201
+00:16:03,000 --> 00:16:06,000
+ We're going to concatenate all of it into a massive string.
+
+202
+00:16:06,000 --> 00:16:09,000
+ So this is just simply the entire data set as a single string.
+
+203
+00:16:09,000 --> 00:16:15,000
+ We're going to pass this to the set constructor, which takes this massive string and throws
+
+204
+00:16:15,000 --> 00:16:19,000
+ out duplicates, because sets do not allow duplicates.
+
+205
+00:16:19,000 --> 00:16:24,000
+ So set of this will just be the set of all the lowercase characters.
+
+206
+00:16:24,000 --> 00:16:29,000
+ And there should be a total of 26 of them.
+
+207
+00:16:29,000 --> 00:16:30,000
+ And now we actually don't want a set.
+
+208
+00:16:30,000 --> 00:16:36,000
+ We want a list, but we don't want a list sorted in some weird arbitrary way.
+
+209
+00:16:36,000 --> 00:16:40,000
+ We want it to be sorted from a to z.
+
+210
+00:16:40,000 --> 00:16:42,000
+ So sorted list.
+
+211
+00:16:42,000 --> 00:16:46,000
+ So those are our characters.
+
+212
+00:16:46,000 --> 00:16:48,000
+ Now what we want is this lookup table, as I mentioned.
+
+213
+00:16:48,000 --> 00:16:55,000
+ So let's create a special s to I, I will call it s is string or character.
+
+214
+00:16:55,000 --> 00:17:04,000
+ And this will be an s to I mapping for is in enumerate of these characters.
+
+215
+00:17:04,000 --> 00:17:11,000
+ So enumerate basically gives us this iterator over the integer index and the actual element
+
+216
+00:17:11,000 --> 00:17:12,000
+ of the list.
+
+217
+00:17:12,000 --> 00:17:15,000
+ And then we are mapping the character to the integer.
+
+218
+00:17:15,000 --> 00:17:24,000
+ So s to I is a mapping from a to zero, b to one, et cetera, all the way from z to 25.
+
+219
+00:17:24,000 --> 00:17:28,000
+ And that's going to be useful here, but we actually also have to specifically set that
+
+220
+00:17:28,000 --> 00:17:36,000
+ s will be 26 and s to I at e will be 27, right, because z was 25.
+
+221
+00:17:36,000 --> 00:17:38,000
+ So those are the lookups.
+
+222
+00:17:38,000 --> 00:17:43,000
+ So we can come here and we can map both character one and character two to their integers.
+
+223
+00:17:43,000 --> 00:17:49,680
+ So this will be s to I character one and I x two will be s to I of character two.
+
+224
+00:17:49,680 --> 00:17:54,760
+ And now we should be able to do this line, but using our array.
+
+225
+00:17:54,760 --> 00:18:00,880
+ So and at X one, I x two, this is the two dimensional array indexing I showed you before,
+
+226
+00:18:00,880 --> 00:18:06,440
+ and honestly just plus equals one, because everything starts at zero.
+
+227
+00:18:06,440 --> 00:18:14,560
+ So this should work and give us a large 28 by 20 array of all these counts.
+
+228
+00:18:14,560 --> 00:18:20,000
+ So if we print n, this is the array, but of course it looks ugly.
+
+229
+00:18:20,000 --> 00:18:25,080
+ So let's erase this ugly mess and let's try to visualize it a bit more nicer.
+
+230
+00:18:25,080 --> 00:18:29,080
+ So for that, we're going to use a library called matplotlib.
+
+231
+00:18:29,080 --> 00:18:31,280
+ So matplotlib allows us to create figures.
+
+232
+00:18:31,280 --> 00:18:36,360
+ So we can do things like PLT, I am sure of the counter a.
+
+233
+00:18:36,360 --> 00:18:39,480
+ So this is the 20 by 20 array.
+
+234
+00:18:39,480 --> 00:18:44,120
+ And this is a structure, but even this, I would say is still pretty ugly.
+
+235
+00:18:44,120 --> 00:18:47,200
+ So we're going to try to create a much nicer visualization of it.
+
+236
+00:18:47,200 --> 00:18:49,960
+ And I wrote a bunch of code for that.
+
+237
+00:18:49,960 --> 00:18:55,880
+ The first thing we're going to need is we're going to need to invert this array here, this
+
+238
+00:18:55,880 --> 00:18:56,880
+ dictionary.
+
+239
+00:18:56,880 --> 00:19:00,080
+ So s to I is a mapping from s to I.
+
+240
+00:19:00,080 --> 00:19:03,280
+ And in I to s, we're going to reverse this dictionary.
+
+241
+00:19:03,280 --> 00:19:06,800
+ So iterate over all the items and just reverse that array.
+
+242
+00:19:06,800 --> 00:19:12,920
+ So I to s maps inversely from zero to a want to be, et cetera.
+
+243
+00:19:12,920 --> 00:19:14,480
+ So we'll need that.
+
+244
+00:19:14,480 --> 00:19:21,040
+ And then here's the code that I came up with to try to make this a little bit nicer.
+
+245
+00:19:21,040 --> 00:19:24,720
+ We create a figure, we plot n.
+
+246
+00:19:24,720 --> 00:19:27,560
+ And then we do and then we visualize much of things here.
+
+247
+00:19:27,560 --> 00:19:32,360
+ Let me just run it so you get a sense of what it this is.
+
+248
+00:19:32,360 --> 00:19:37,560
+ So you see here that we have the array spaced out.
+
+249
+00:19:37,560 --> 00:19:45,440
+ And every one of these is basically like B follows G zero times B follows H 41 times.
+
+250
+00:19:45,440 --> 00:19:48,200
+ So a follows J one 75 times.
+
+251
+00:19:48,200 --> 00:19:53,200
+ And so what you can see that I'm doing here is first I show that entire array.
+
+252
+00:19:53,200 --> 00:19:56,980
+ And then I iterate over all the individual little cells here.
+
+253
+00:19:56,980 --> 00:20:02,980
+ And I create a character string here, which is the inverse mapping, I to s of the integer
+
+254
+00:20:02,980 --> 00:20:08,860
+ I and the integer J. So that's those are the bi grams in a character representation.
+
+255
+00:20:08,860 --> 00:20:12,340
+ And then I plot just the by gram text.
+
+256
+00:20:12,340 --> 00:20:16,300
+ And then I plot the number of times that is by gram occurs.
+
+257
+00:20:16,300 --> 00:20:21,180
+ Now the reason that there's a dot item here is because when you index into these arrays,
+
+258
+00:20:21,180 --> 00:20:23,180
+ these are torch tensors.
+
+259
+00:20:23,180 --> 00:20:26,220
+ You see that we still get a tensor back.
+
+260
+00:20:26,220 --> 00:20:29,980
+ So the type of this thing, you think it would be just an integer, one forty nine, but it's
+
+261
+00:20:29,980 --> 00:20:32,220
+ actually a torch tensor.
+
+262
+00:20:32,220 --> 00:20:38,700
+ And so if you do dot item, then it will pop out that individual integer.
+
+263
+00:20:38,700 --> 00:20:40,940
+ So it'll just be one forty nine.
+
+264
+00:20:40,940 --> 00:20:42,660
+ So that's what's happening there.
+
+265
+00:20:42,660 --> 00:20:45,540
+ And these are just some options to make it look nice.
+
+266
+00:20:45,540 --> 00:20:49,460
+ So what is the structure of this array?
+
+267
+00:20:49,460 --> 00:20:52,500
+ We have all these counts and we see that some of them occur often and some of them do
+
+268
+00:20:52,500 --> 00:20:54,220
+ not occur often.
+
+269
+00:20:54,220 --> 00:20:57,660
+ But if you scrutinize this carefully, you will notice that we're not actually being very
+
+270
+00:20:57,660 --> 00:20:58,660
+ clever.
+
+271
+00:20:58,660 --> 00:21:02,820
+ That's because when you come over here, you'll notice that for example, we have an entire
+
+272
+00:21:02,820 --> 00:21:04,860
+ row of completely zeros.
+
+273
+00:21:04,860 --> 00:21:09,140
+ And that's because the end character is never possibly going to be the first character of
+
+274
+00:21:09,140 --> 00:21:14,420
+ a by gram because we're always placing these end tokens all at the end of a by gram.
+
+275
+00:21:14,420 --> 00:21:21,100
+ Similarly, we have entire column zeros here because the S character will never possibly
+
+276
+00:21:21,100 --> 00:21:25,940
+ be the second element of a by gram because we always start with S and we end with E and
+
+277
+00:21:25,940 --> 00:21:27,900
+ we only have the words in between.
+
+278
+00:21:27,900 --> 00:21:31,980
+ So we have an entire column of zeros and an entire row of zeros.
+
+279
+00:21:31,980 --> 00:21:36,060
+ And in this little two by two matrix here as well, the only one that can possibly happen
+
+280
+00:21:36,060 --> 00:21:43,300
+ is if S directly follows E. That can be nonzero if we have a word that has no letters.
+
+281
+00:21:43,300 --> 00:21:44,820
+ So in that case, there's no letters in the word.
+
+282
+00:21:44,820 --> 00:21:50,380
+ It's an empty word and we just have S follows E. But the other ones are just not possible.
+
+283
+00:21:50,380 --> 00:21:54,020
+ And so we're basically wasting space and not only that, but the S and the E are getting
+
+284
+00:21:54,020 --> 00:21:55,660
+ very crowded here.
+
+285
+00:21:55,660 --> 00:21:59,580
+ I was using these brackets because there's convention in natural language processing to
+
+286
+00:21:59,580 --> 00:22:03,460
+ use these kinds of brackets to denote special tokens.
+
+287
+00:22:03,460 --> 00:22:05,420
+ But we're going to use something else.
+
+288
+00:22:05,420 --> 00:22:08,420
+ So let's fix all this and make it prettier.
+
+289
+00:22:08,420 --> 00:22:10,500
+ We're not actually going to have two special tokens.
+
+290
+00:22:10,500 --> 00:22:13,180
+ We're only going to have one special token.
+
+291
+00:22:13,180 --> 00:22:19,220
+ So we're going to have n by n array of 27 by 27 instead.
+
+292
+00:22:19,220 --> 00:22:25,100
+ Instead of having two, we will just have one and I will call it a dot.
+
+293
+00:22:25,100 --> 00:22:27,580
+ Okay.
+
+294
+00:22:27,580 --> 00:22:30,660
+ Let me swing this over here.
+
+295
+00:22:30,660 --> 00:22:34,020
+ Now one more thing that I would like to do is I would actually like to make this special
+
+296
+00:22:34,020 --> 00:22:36,540
+ character half position zero.
+
+297
+00:22:36,540 --> 00:22:39,060
+ And I would like to offset all the other letters off.
+
+298
+00:22:39,060 --> 00:22:42,860
+ I find that a little bit more pleasing.
+
+299
+00:22:42,860 --> 00:22:50,060
+ So we need a plus one here so that the first character, which is a, will start at one.
+
+300
+00:22:50,060 --> 00:22:56,180
+ So s to I will now be a starts at one and dot is zero.
+
+301
+00:22:56,180 --> 00:23:00,460
+ And I to s, of course, we're not changing this because I to s just creates a reverse
+
+302
+00:23:00,460 --> 00:23:02,460
+ mapping and this will work fine.
+
+303
+00:23:02,460 --> 00:23:06,820
+ So one is a two is B zero is dot.
+
+304
+00:23:06,820 --> 00:23:13,220
+ So we reverse that here, we have a dot and a dot.
+
+305
+00:23:13,220 --> 00:23:15,060
+ This should work fine.
+
+306
+00:23:15,060 --> 00:23:19,020
+ Make sure I started zeros count.
+
+307
+00:23:19,020 --> 00:23:20,500
+ And then here we don't go up to 28.
+
+308
+00:23:20,500 --> 00:23:27,140
+ We go up to 27 and this should just work.
+
+309
+00:23:27,140 --> 00:23:32,060
+ Okay.
+
+310
+00:23:32,060 --> 00:23:33,740
+ So we see that dot dot never happened.
+
+311
+00:23:33,740 --> 00:23:36,740
+ It's a zero because we don't have empty words.
+
+312
+00:23:36,740 --> 00:23:43,740
+ And this row here now is just very simply the counts for all the first letters.
+
+313
+00:23:43,740 --> 00:23:49,740
+ So j starts a word, h starts a word, I start a word, etc.
+
+314
+00:23:49,740 --> 00:23:53,260
+ And then these are all the ending characters.
+
+315
+00:23:53,260 --> 00:23:57,260
+ And in between, we have the structure of what characters follow each other.
+
+316
+00:23:57,260 --> 00:24:01,860
+ So this is the counts array of our entire data set.
+
+317
+00:24:01,860 --> 00:24:06,380
+ So this array actually has all the information necessary for us to actually sample from this
+
+318
+00:24:06,380 --> 00:24:10,020
+ by gram character level language model.
+
+319
+00:24:10,020 --> 00:24:13,820
+ And roughly speaking, what we're going to do is we're just going to start following these
+
+320
+00:24:13,820 --> 00:24:15,420
+ probabilities and these counts.
+
+321
+00:24:15,420 --> 00:24:19,060
+ And we're going to start sampling from the from model.
+
+322
+00:24:19,060 --> 00:24:24,820
+ So in the beginning, of course, we start with the dot, the start token dot.
+
+323
+00:24:24,820 --> 00:24:30,740
+ So to sample the first character of a name, we're looking at this row here.
+
+324
+00:24:30,740 --> 00:24:35,740
+ So we see that we have the counts and those counts externally are telling us how often
+
+325
+00:24:35,740 --> 00:24:39,740
+ any one of these characters is to start a word.
+
+326
+00:24:39,740 --> 00:24:47,380
+ So if we take this n and we grab the first row, we can do that by using just indexing
+
+327
+00:24:47,380 --> 00:24:53,860
+ at zero and then using this notation column for the rest of that row.
+
+328
+00:24:53,860 --> 00:25:02,180
+ So n zero column is indexing into the zero row and then it's grabbing all the columns.
+
+329
+00:25:02,180 --> 00:25:06,340
+ And so this will give us a one dimensional array of the first row.
+
+330
+00:25:06,340 --> 00:25:11,740
+ So zero, four, four, ten, he knows zero, four, four, ten, one, three, oh, six, one, five,
+
+331
+00:25:11,740 --> 00:25:12,740
+ four, two, etc.
+
+332
+00:25:12,740 --> 00:25:14,580
+ It's just the first row.
+
+333
+00:25:14,580 --> 00:25:20,180
+ The shape of this is twenty seven, just the row of twenty seven.
+
+334
+00:25:20,180 --> 00:25:23,940
+ And the other way that you can do this also is you just you don't actually give this,
+
+335
+00:25:23,940 --> 00:25:26,460
+ you just grab the zero row like this.
+
+336
+00:25:26,460 --> 00:25:28,340
+ This is equivalent.
+
+337
+00:25:28,340 --> 00:25:30,260
+ Now these are the counts.
+
+338
+00:25:30,260 --> 00:25:35,300
+ And now what we'd like to do is we'd like to basically sample from this.
+
+339
+00:25:35,300 --> 00:25:39,340
+ Since these are the raw counts, we actually have to convert this to probabilities.
+
+340
+00:25:39,340 --> 00:25:43,140
+ So we create a probability vector.
+
+341
+00:25:43,140 --> 00:25:49,180
+ So we'll take n of zero and we'll actually convert this to float first.
+
+342
+00:25:49,180 --> 00:25:54,340
+ Okay, so these integers are converted to float, floating point numbers.
+
+343
+00:25:54,340 --> 00:25:59,100
+ And the reason we're creating floats is because we're about to normalize these counts.
+
+344
+00:25:59,100 --> 00:26:04,580
+ So to create a probability distribution here, we want to divide, we basically want to do
+
+345
+00:26:04,580 --> 00:26:09,900
+ p, p, p divide p dot sum.
+
+346
+00:26:09,900 --> 00:26:12,300
+ And now we get a vector of smaller numbers.
+
+347
+00:26:12,300 --> 00:26:13,900
+ And these are now probabilities.
+
+348
+00:26:13,900 --> 00:26:19,020
+ So of course, because we divided by the sum, the sum of p now is one.
+
+349
+00:26:19,020 --> 00:26:21,260
+ So this is a nice proper probability distribution.
+
+350
+00:26:21,260 --> 00:26:22,500
+ It sums to one.
+
+351
+00:26:22,500 --> 00:26:26,460
+ And this is giving us the probability for any single character to be the first character
+
+352
+00:26:26,460 --> 00:26:28,180
+ of a word.
+
+353
+00:26:28,180 --> 00:26:30,900
+ So now we can try to sample from this distribution.
+
+354
+00:26:30,900 --> 00:26:34,340
+ To sample from these distributions, we're going to use Torched up Multinomial, which
+
+355
+00:26:34,340 --> 00:26:36,380
+ I've pulled up here.
+
+356
+00:26:36,380 --> 00:26:43,460
+ So Torched up Multinomial returns samples from the Multinomial probability distribution,
+
+357
+00:26:43,460 --> 00:26:48,220
+ which is a complicated way of saying, you give me probabilities and I will give you integers,
+
+358
+00:26:48,220 --> 00:26:51,820
+ which are sampled according to the property distribution.
+
+359
+00:26:51,820 --> 00:26:53,420
+ So this is the signature of the method.
+
+360
+00:26:53,420 --> 00:26:59,460
+ And to make everything deterministic, we're going to use a generator object in PyTorch.
+
+361
+00:26:59,460 --> 00:27:01,180
+ So this makes everything deterministic.
+
+362
+00:27:01,180 --> 00:27:04,980
+ So when you run this on your computer, you're going to get the exact same results that I'm
+
+363
+00:27:04,980 --> 00:27:07,460
+ getting here on my computer.
+
+364
+00:27:07,460 --> 00:27:12,980
+ So let me show you how this works.
+
+365
+00:27:12,980 --> 00:27:19,220
+ Here's a deterministic way of creating a torch generator object, seeding it with some
+
+366
+00:27:19,220 --> 00:27:21,460
+ number that we can agree on.
+
+367
+00:27:21,460 --> 00:27:25,100
+ So that seeds a generator gives us an object G.
+
+368
+00:27:25,100 --> 00:27:32,260
+ And then we can pass that G to a function that creates here random numbers, Torched up
+
+369
+00:27:32,260 --> 00:27:35,020
+ random creates random numbers, three of them.
+
+370
+00:27:35,020 --> 00:27:40,620
+ And it's using this generator object to, as a source of randomness.
+
+371
+00:27:40,620 --> 00:27:46,740
+ So without normalizing it, I can just print.
+
+372
+00:27:46,740 --> 00:27:50,540
+ This is sort of like numbers between zero and one that are random according to this
+
+373
+00:27:50,540 --> 00:27:51,540
+ thing.
+
+374
+00:27:51,540 --> 00:27:55,540
+ And whenever I run it again, I'm always going to get the same result because I keep using
+
+375
+00:27:55,540 --> 00:27:59,020
+ the same generator object, which I'm seeding here.
+
+376
+00:27:59,020 --> 00:28:05,380
+ And then if I divide to normalize, I'm going to get a nice probability distribution of
+
+377
+00:28:05,380 --> 00:28:07,780
+ just three elements.
+
+378
+00:28:07,780 --> 00:28:11,380
+ And then we can use Torched Multinomial to draw samples from it.
+
+379
+00:28:11,380 --> 00:28:14,020
+ So this is what that looks like.
+
+380
+00:28:14,020 --> 00:28:21,260
+ So the object Multinomial will take the torch tensor of probability distributions.
+
+381
+00:28:21,260 --> 00:28:25,180
+ Then we can ask for a number of samples, let's say 20.
+
+382
+00:28:25,180 --> 00:28:30,980
+ Replacement equals true means that when we draw an element, we can draw it and then we
+
+383
+00:28:30,980 --> 00:28:36,140
+ can put it back into the list of eligible indices to draw again.
+
+384
+00:28:36,140 --> 00:28:41,820
+ And we have to specify replacement as true because by default for some reason it's false.
+
+385
+00:28:41,820 --> 00:28:45,980
+ And I think it's just something to be careful with.
+
+386
+00:28:45,980 --> 00:28:47,580
+ And the generator is passed in here.
+
+387
+00:28:47,580 --> 00:28:51,500
+ So we're going to always get deterministic results, the same results.
+
+388
+00:28:51,500 --> 00:28:57,300
+ So if I run these two, we're going to get a bunch of samples from this distribution.
+
+389
+00:28:57,300 --> 00:29:04,700
+ Now you'll notice here that the probability for the first element in this tensor is 60%.
+
+390
+00:29:04,700 --> 00:29:10,860
+ So in these 20 samples, we'd expect 60% of them to be zero.
+
+391
+00:29:10,860 --> 00:29:14,500
+ We'd expect 30% of them to be one.
+
+392
+00:29:14,500 --> 00:29:20,860
+ And because the element index two has only 10% probability, very few of these samples
+
+393
+00:29:20,860 --> 00:29:22,380
+ should be two.
+
+394
+00:29:22,380 --> 00:29:25,620
+ And indeed we only have a small number of twos.
+
+395
+00:29:25,620 --> 00:29:29,260
+ And we can sample as many as we'd like.
+
+396
+00:29:29,260 --> 00:29:36,100
+ And the more we sample, the more these numbers should roughly have the distribution here.
+
+397
+00:29:36,100 --> 00:29:42,700
+ So we should have lots of zeros, half as many ones.
+
+398
+00:29:42,700 --> 00:29:51,980
+ And we should have three times S few, sorry, S few ones and three times S few twos.
+
+399
+00:29:51,980 --> 00:29:53,540
+ So you see that we have very few twos.
+
+400
+00:29:53,540 --> 00:29:55,940
+ We have some ones and most of them are zero.
+
+401
+00:29:55,940 --> 00:29:59,100
+ So that's what Torx time will do.
+
+402
+00:29:59,100 --> 00:30:07,780
+ For us here, we aren't just in this row, we've created this P here, and now we can sample
+
+403
+00:30:07,780 --> 00:30:09,860
+ from it.
+
+404
+00:30:09,860 --> 00:30:15,820
+ So if we use the same seed, and then we sample from this distribution, let's just get one
+
+405
+00:30:15,820 --> 00:30:22,940
+ sample, then we see that the sample is say 13.
+
+406
+00:30:22,940 --> 00:30:25,500
+ So this will be the index.
+
+407
+00:30:25,500 --> 00:30:28,980
+ And let's, you see how it's a tensor that wraps 13.
+
+408
+00:30:28,980 --> 00:30:33,180
+ We again have to use that item to pop out that integer.
+
+409
+00:30:33,180 --> 00:30:37,660
+ And now index would be just the number 13.
+
+410
+00:30:37,660 --> 00:30:45,860
+ And of course, we can map the I2S of Ix to figure out exactly which character we're sampling
+
+411
+00:30:45,860 --> 00:30:46,860
+ here.
+
+412
+00:30:46,860 --> 00:30:53,420
+ We're sampling M. So we're saying that the first character is in our generation.
+
+413
+00:30:53,420 --> 00:30:56,340
+ And just looking at the row here, M was drawn.
+
+414
+00:30:56,340 --> 00:31:00,300
+ And we can see that M actually starts a large number of words.
+
+415
+00:31:00,300 --> 00:31:04,900
+ M started 2,500 words out of 32,000 words.
+
+416
+00:31:04,900 --> 00:31:09,300
+ So almost a bit less than 10% of the words start with M.
+
+417
+00:31:09,300 --> 00:31:13,460
+ So this was actually a fairly likely character to draw.
+
+418
+00:31:13,460 --> 00:31:17,260
+ So that would be the first character of our word.
+
+419
+00:31:17,260 --> 00:31:23,300
+ And now we can continue to sample more characters, because now we know that M started, M is
+
+420
+00:31:23,300 --> 00:31:24,940
+ already sampled.
+
+421
+00:31:24,940 --> 00:31:30,900
+ So now to draw the next character, we will come back here and we will look for the row
+
+422
+00:31:30,900 --> 00:31:32,900
+ that starts with M.
+
+423
+00:31:32,900 --> 00:31:36,900
+ So you see M and we have a row here.
+
+424
+00:31:36,900 --> 00:31:40,860
+ So we see that M dot is 516.
+
+425
+00:31:40,860 --> 00:31:43,940
+ M A is this many, M B is this many, et cetera.
+
+426
+00:31:43,940 --> 00:31:45,820
+ So these are the counts for the next row.
+
+427
+00:31:45,820 --> 00:31:48,860
+ And that's the next character that we are going to now generate.
+
+428
+00:31:48,860 --> 00:31:52,140
+ So I think we are ready to actually just write out a loop, because I think you're starting
+
+429
+00:31:52,140 --> 00:31:54,700
+ to get a sense of how this is going to go.
+
+430
+00:31:54,700 --> 00:32:02,580
+ The, we always begin at index zero, because that's the start token.
+
+431
+00:32:02,580 --> 00:32:09,300
+ And then while true, we're going to grab the row corresponding to index that we're currently
+
+432
+00:32:09,300 --> 00:32:10,300
+ on.
+
+433
+00:32:10,300 --> 00:32:11,300
+ So that's P.
+
+434
+00:32:11,300 --> 00:32:19,420
+ So that's N array at I X, converted to float is RP.
+
+435
+00:32:19,420 --> 00:32:26,020
+ Then we normalize this P to sum to one.
+
+436
+00:32:26,020 --> 00:32:28,380
+ Accidentally ran the infinite loop.
+
+437
+00:32:28,380 --> 00:32:30,980
+ We normalize P to sum to one.
+
+438
+00:32:30,980 --> 00:32:32,620
+ Then we need this generator object.
+
+439
+00:32:32,620 --> 00:32:35,460
+ Now we're going to initialize up here.
+
+440
+00:32:35,460 --> 00:32:41,100
+ And we're going to draw a single sample from this distribution.
+
+441
+00:32:41,100 --> 00:32:46,820
+ And then this is going to tell us what index is going to be next.
+
+442
+00:32:46,820 --> 00:32:52,900
+ If the index sampled is zero, then that's now the end token.
+
+443
+00:32:52,900 --> 00:32:55,700
+ So we will break.
+
+444
+00:32:55,700 --> 00:33:02,500
+ Otherwise we are going to print s to I of X.
+
+445
+00:33:02,500 --> 00:33:05,740
+ I to S of X.
+
+446
+00:33:05,740 --> 00:33:07,500
+ And that's pretty much it.
+
+447
+00:33:07,500 --> 00:33:10,500
+ We're just, this should work.
+
+448
+00:33:10,500 --> 00:33:12,340
+ Okay, more.
+
+449
+00:33:12,340 --> 00:33:14,900
+ So that's the, that's the name that we've sampled.
+
+450
+00:33:14,900 --> 00:33:21,700
+ We started with M, the next up was O, then R, and then dot.
+
+451
+00:33:21,700 --> 00:33:25,060
+ And this dot, we printed here as well.
+
+452
+00:33:25,060 --> 00:33:30,260
+ So let's now do this a few times.
+
+453
+00:33:30,260 --> 00:33:37,380
+ So let's actually create an out list here.
+
+454
+00:33:37,380 --> 00:33:39,940
+ And instead of printing, we're going to append.
+
+455
+00:33:39,940 --> 00:33:44,660
+ So out that append this character.
+
+456
+00:33:44,660 --> 00:33:47,100
+ And then here, let's just print it at the end.
+
+457
+00:33:47,100 --> 00:33:49,700
+ So let's just join up all the outs.
+
+458
+00:33:49,700 --> 00:33:51,540
+ And we're just going to print more.
+
+459
+00:33:51,540 --> 00:33:52,540
+ Okay.
+
+460
+00:33:52,540 --> 00:33:55,380
+ Now we're always getting the same result because of the generator.
+
+461
+00:33:55,380 --> 00:33:57,100
+ So who wants to do this a few times?
+
+462
+00:33:57,100 --> 00:34:00,860
+ We can go for high and range 10.
+
+463
+00:34:00,860 --> 00:34:02,340
+ We can sample 10 names.
+
+464
+00:34:02,340 --> 00:34:05,940
+ And we can just do that 10 times.
+
+465
+00:34:05,940 --> 00:34:08,740
+ And these are the names that we're getting out.
+
+466
+00:34:08,740 --> 00:34:11,020
+ Let's do 20.
+
+467
+00:34:11,020 --> 00:34:16,300
+ I'll be honest with you, this doesn't look right.
+
+468
+00:34:16,300 --> 00:34:20,700
+ So I started a few minutes to convince myself that it actually is right.
+
+469
+00:34:20,700 --> 00:34:25,820
+ The reason these samples are so terrible is that by gram language model is actually
+
+470
+00:34:25,820 --> 00:34:27,980
+ just like really terrible.
+
+471
+00:34:27,980 --> 00:34:29,780
+ We can generate a few more here.
+
+472
+00:34:29,780 --> 00:34:34,580
+ And you can see that they're kind of like their name like a little bit like Ianu, Erile,
+
+473
+00:34:34,580 --> 00:34:35,740
+ etc.
+
+474
+00:34:35,740 --> 00:34:38,940
+ But they're just like totally messed up.
+
+475
+00:34:38,940 --> 00:34:43,220
+ And I mean, the reason that this is so bad, like we're generating H as a name.
+
+476
+00:34:43,220 --> 00:34:48,300
+ But you have to think through it from the model size, it doesn't know that this H is
+
+477
+00:34:48,300 --> 00:34:52,340
+ the very first H. All it knows is that H was previously.
+
+478
+00:34:52,340 --> 00:34:55,420
+ And now how likely is H the last character?
+
+479
+00:34:55,420 --> 00:34:57,980
+ Well, it's somewhat likely.
+
+480
+00:34:57,980 --> 00:34:59,260
+ And so it just makes it last character.
+
+481
+00:34:59,260 --> 00:35:03,220
+ It doesn't know that there were other things before it or there were not other things before
+
+482
+00:35:03,220 --> 00:35:04,220
+ it.
+
+483
+00:35:04,220 --> 00:35:08,460
+ And so that's why it's generating all these nonsense names.
+
+484
+00:35:08,460 --> 00:35:14,500
+ Otherwise do this is to convince yourself that it is actually doing something reasonable,
+
+485
+00:35:14,500 --> 00:35:21,220
+ even though it's so terrible, is these little piece here are 27, right?
+
+486
+00:35:21,220 --> 00:35:23,380
+ Like 27.
+
+487
+00:35:23,380 --> 00:35:26,580
+ So how about if we did something like this?
+
+488
+00:35:26,580 --> 00:35:35,140
+ Instead of p having any structure whatsoever, how about if p was just a torch dot ones of
+
+489
+00:35:35,140 --> 00:35:37,420
+ 27?
+
+490
+00:35:37,420 --> 00:35:39,180
+ By default, this is a float 32.
+
+491
+00:35:39,180 --> 00:35:40,380
+ So this is fine.
+
+492
+00:35:40,380 --> 00:35:43,140
+ Divide 27.
+
+493
+00:35:43,140 --> 00:35:48,180
+ So what I'm doing here is this is the uniform distribution, which will make everything equally
+
+494
+00:35:48,180 --> 00:35:50,140
+ likely.
+
+495
+00:35:50,140 --> 00:35:52,140
+ And we can sample from that.
+
+496
+00:35:52,140 --> 00:35:54,340
+ So let's see if that does any better.
+
+497
+00:35:54,340 --> 00:35:55,340
+ Okay.
+
+498
+00:35:55,340 --> 00:35:59,260
+ So it's this is what you have from a model that is completely untrained, where everything
+
+499
+00:35:59,260 --> 00:36:00,860
+ is equally likely.
+
+500
+00:36:00,860 --> 00:36:02,580
+ So it's obviously garbage.
+
+501
+00:36:02,580 --> 00:36:07,660
+ And then if we have a trained model, which is trained on just by grams, this is what
+
+502
+00:36:07,660 --> 00:36:08,660
+ we get.
+
+503
+00:36:08,660 --> 00:36:12,020
+ So you can see that it is more name like it is actually working.
+
+504
+00:36:12,020 --> 00:36:16,740
+ It's just by gram is so terrible and we have to do better.
+
+505
+00:36:16,740 --> 00:36:20,780
+ Now next, I would like to fix an inefficiency that we have going on here, because what we
+
+506
+00:36:20,780 --> 00:36:25,740
+ are doing here is we're always fetching a row of n from the counts matrix up ahead.
+
+507
+00:36:25,740 --> 00:36:28,100
+ And we're always doing the same things.
+
+508
+00:36:28,100 --> 00:36:31,900
+ We're converting to float and we're dividing and we're doing this every single iteration
+
+509
+00:36:31,900 --> 00:36:32,900
+ of this loop.
+
+510
+00:36:32,900 --> 00:36:36,260
+ And we just keep renormalizing these rows over and over again and it's extremely inefficient
+
+511
+00:36:36,260 --> 00:36:37,580
+ and wasteful.
+
+512
+00:36:37,580 --> 00:36:42,300
+ So what I'd like to do is I'd like to actually prepare a matrix capital P that will just have
+
+513
+00:36:42,300 --> 00:36:44,100
+ the probabilities in it.
+
+514
+00:36:44,100 --> 00:36:48,140
+ So in other words, it's going to be the same as the capital n matrix here of counts.
+
+515
+00:36:48,140 --> 00:36:53,540
+ But every single row will have the row of probabilities that is normalized to one, indicating the
+
+516
+00:36:53,540 --> 00:36:59,060
+ probability distribution for the next character, given the character before it, as defined
+
+517
+00:36:59,060 --> 00:37:01,740
+ by which row we're in.
+
+518
+00:37:01,740 --> 00:37:05,660
+ So basically what we'd like to do is we'd like to just do it upfront here and then we'd
+
+519
+00:37:05,660 --> 00:37:08,340
+ like to just use that row here.
+
+520
+00:37:08,340 --> 00:37:15,100
+ So here we would like to just do P equals P of I X instead.
+
+521
+00:37:15,100 --> 00:37:18,180
+ The other reason I want to do this is not just proficiency, but also I would like us
+
+522
+00:37:18,180 --> 00:37:23,580
+ to practice these indimensional tensors and I'd like us to practice their manipulation
+
+523
+00:37:23,580 --> 00:37:27,140
+ and especially something that's called broadcasting that we'll go into in a second.
+
+524
+00:37:27,140 --> 00:37:30,980
+ We're actually going to have to become very good at these tensor manipulations because
+
+525
+00:37:30,980 --> 00:37:34,060
+ if we're going to build out all the way to transformers, we're going to be doing some
+
+526
+00:37:34,060 --> 00:37:39,140
+ pretty complicated array operations for efficiency and we need to really understand that and
+
+527
+00:37:39,140 --> 00:37:42,460
+ be very good at it.
+
+528
+00:37:42,460 --> 00:37:48,460
+ So intuitively what we want to do is we first want to grab the floating point copy of n
+
+529
+00:37:48,460 --> 00:37:51,180
+ and I'm mimicking the line here basically.
+
+530
+00:37:51,180 --> 00:37:55,900
+ And then we want to divide all the rows so that they sum to one.
+
+531
+00:37:55,900 --> 00:38:00,860
+ So we'd like to do something like this, P divide P dot sum.
+
+532
+00:38:00,860 --> 00:38:09,140
+ But now we have to be careful because P dot sum actually produces a sum, sorry, P equals
+
+533
+00:38:09,140 --> 00:38:10,900
+ and that float copy.
+
+534
+00:38:10,900 --> 00:38:19,100
+ P dot sum produces a sums up all of the counts of this entire matrix n and gives us a single
+
+535
+00:38:19,100 --> 00:38:21,500
+ number of just the summation of everything.
+
+536
+00:38:21,500 --> 00:38:23,620
+ So that's not the way we want to divide.
+
+537
+00:38:23,620 --> 00:38:30,820
+ We want to simultaneously and imperil divide all the rows by their respective sums.
+
+538
+00:38:30,820 --> 00:38:36,380
+ So what we have to do now is we have to go into documentation for torch dot sum and we
+
+539
+00:38:36,380 --> 00:38:40,380
+ can scroll down here to a definition that is relevant to us which is where we don't
+
+540
+00:38:40,380 --> 00:38:45,540
+ only provide an input array that we want to sum but we also provide the dimension along
+
+541
+00:38:45,540 --> 00:38:47,540
+ which we want to sum.
+
+542
+00:38:47,540 --> 00:38:52,580
+ And in particular we want to sum up over rows, right?
+
+543
+00:38:52,580 --> 00:38:58,100
+ Now one more argument that I want you to pay attention to here is the keep them as false.
+
+544
+00:38:58,100 --> 00:39:03,140
+ If keep them is true and the output tensor is of the same size as input except of course
+
+545
+00:39:03,140 --> 00:39:07,620
+ the dimension along which you summed which will become just one.
+
+546
+00:39:07,620 --> 00:39:14,620
+ But if you pass in keep them as false then this dimension is squeezed out.
+
+547
+00:39:14,620 --> 00:39:19,140
+ And so torch dot sum not only does the sum and collapses dimension to be of size one but
+
+548
+00:39:19,140 --> 00:39:24,820
+ in addition it does what's called a squeeze where it squeezes out that dimension.
+
+549
+00:39:24,820 --> 00:39:31,060
+ So basically what we want here is we instead want to do p dot sum of sum axis.
+
+550
+00:39:31,060 --> 00:39:35,820
+ And in particular notice that p dot shape is 27 by 27.
+
+551
+00:39:35,820 --> 00:39:40,380
+ So when we sum up across axis zero then we would be taking the zero dimension and we
+
+552
+00:39:40,380 --> 00:39:42,860
+ would be summing across it.
+
+553
+00:39:42,860 --> 00:39:50,380
+ So when keep them as true then this thing will not only give us the counts across along
+
+554
+00:39:50,380 --> 00:39:55,660
+ the columns but notice that basically the shape of this is one by 27.
+
+555
+00:39:55,660 --> 00:39:57,700
+ We just get a row vector.
+
+556
+00:39:57,700 --> 00:40:01,420
+ And the reason we get a row vector here again is because we pass in zero dimension so this
+
+557
+00:40:01,420 --> 00:40:06,100
+ zero dimension becomes one and we've done a sum and we get a row.
+
+558
+00:40:06,100 --> 00:40:11,420
+ And so basically we've done the sum this way vertically and arrived at just a single one
+
+559
+00:40:11,420 --> 00:40:15,580
+ by 27 vector of counts.
+
+560
+00:40:15,580 --> 00:40:19,780
+ What happens when you take out keep them is that we just get 27.
+
+561
+00:40:19,780 --> 00:40:28,820
+ So it squeezes out that dimension and we just get a one dimensional vector of size 27.
+
+562
+00:40:28,820 --> 00:40:35,180
+ Now we don't actually want one by 27 row vector because that gives us the counts or
+
+563
+00:40:35,180 --> 00:40:39,660
+ the sums across the columns.
+
+564
+00:40:39,660 --> 00:40:43,820
+ We actually want to sum the other way along dimension one and you'll see that the shape
+
+565
+00:40:43,820 --> 00:40:47,620
+ of this is 27 by one so it's a column vector.
+
+566
+00:40:47,620 --> 00:40:54,100
+ It's a 27 by one vector of counts.
+
+567
+00:40:54,100 --> 00:40:57,820
+ And that's because what's happened here is that we're going horizontally and this 27
+
+568
+00:40:57,820 --> 00:41:03,740
+ by 27 matrix becomes a 27 by one array.
+
+569
+00:41:03,740 --> 00:41:10,820
+ Now you'll notice by the way that the actual numbers of these counts are identical and
+
+570
+00:41:10,820 --> 00:41:15,020
+ that's because this special array of counts here comes from by grams to the sticks.
+
+571
+00:41:15,020 --> 00:41:20,260
+ And actually it just so happens by chance or because of the way this array is constructed
+
+572
+00:41:20,260 --> 00:41:26,420
+ that this sums along the columns or along the rows horizontally or vertically is identical.
+
+573
+00:41:26,420 --> 00:41:32,460
+ But actually what we want to do in this case is we want to sum across the rows horizontally.
+
+574
+00:41:32,460 --> 00:41:36,700
+ So what we want here is p dot sum of one with keep them true.
+
+575
+00:41:36,700 --> 00:41:39,780
+ 27 by one column vector.
+
+576
+00:41:39,780 --> 00:41:44,940
+ And now what we want to do is we want to divide by that.
+
+577
+00:41:44,940 --> 00:41:46,420
+ Now we have to be careful here again.
+
+578
+00:41:46,420 --> 00:41:52,940
+ Is it possible to take what's a p dot shape you see here is 27 by 27?
+
+579
+00:41:52,940 --> 00:42:01,520
+ Is it possible to take a 27 by 27 array and divided by what is a 27 by one array?
+
+580
+00:42:01,520 --> 00:42:04,160
+ Is that a operation that you can do?
+
+581
+00:42:04,160 --> 00:42:07,500
+ And whether or not you can perform this operation is determined by what's called broadcasting
+
+582
+00:42:07,500 --> 00:42:08,500
+ rules.
+
+583
+00:42:08,500 --> 00:42:13,100
+ So if you just search broadcasting semantics in torch, you'll notice that there's a special
+
+584
+00:42:13,100 --> 00:42:20,400
+ definition for what's called broadcasting that for whether or not these two arrays can
+
+585
+00:42:20,400 --> 00:42:24,140
+ be combined in a binary operation like division.
+
+586
+00:42:24,140 --> 00:42:27,500
+ So the first condition is each tensor has at least one dimension, which is the case
+
+587
+00:42:27,500 --> 00:42:28,800
+ for us.
+
+588
+00:42:28,800 --> 00:42:32,620
+ And then when iterating over the dimension sizes, starting at the trailing dimension,
+
+589
+00:42:32,620 --> 00:42:36,420
+ the dimension sizes must either be equal, one of them is one or one of them does not
+
+590
+00:42:36,420 --> 00:42:37,620
+ exist.
+
+591
+00:42:37,620 --> 00:42:40,460
+ Okay, so let's do that.
+
+592
+00:42:40,460 --> 00:42:45,380
+ We need to align the two arrays and their shapes, which is very easy because both of
+
+593
+00:42:45,380 --> 00:42:48,300
+ these shapes have two elements, so they're aligned.
+
+594
+00:42:48,300 --> 00:42:52,580
+ Then we iterate over from the from the right and going to the left.
+
+595
+00:42:52,580 --> 00:42:57,660
+ Each dimension must be either equal, one of them is a one or one of them does not exist.
+
+596
+00:42:57,660 --> 00:43:00,640
+ So in this case, they're not equal, but one of them is a one.
+
+597
+00:43:00,640 --> 00:43:02,140
+ So this is fine.
+
+598
+00:43:02,140 --> 00:43:04,240
+ And then this dimension, they're both equal.
+
+599
+00:43:04,240 --> 00:43:06,120
+ So this is fine.
+
+600
+00:43:06,120 --> 00:43:12,120
+ So all the dimensions are fine and therefore the this operation is broadcastable.
+
+601
+00:43:12,120 --> 00:43:14,760
+ So that means that this operation is cloud.
+
+602
+00:43:14,760 --> 00:43:20,040
+ And what is it that these arrays do when you divide 27 by 27 by 27 by one?
+
+603
+00:43:20,040 --> 00:43:26,080
+ What it does is that it takes this dimension one and it stretches it out, it copies it
+
+604
+00:43:26,080 --> 00:43:29,200
+ to match 27 here in this case.
+
+605
+00:43:29,200 --> 00:43:36,820
+ So in our case, it takes this column vector, which is 27 by one and it copies it 27 times
+
+606
+00:43:36,820 --> 00:43:40,660
+ to make these both be 27 by 27 internally.
+
+607
+00:43:40,660 --> 00:43:42,020
+ You can think of it that way.
+
+608
+00:43:42,020 --> 00:43:47,860
+ And so it copies those counts and then it does an element wise division, which is what
+
+609
+00:43:47,860 --> 00:43:53,020
+ we want because these counts, we want to divide by them on every single one of these columns
+
+610
+00:43:53,020 --> 00:43:54,980
+ in this matrix.
+
+611
+00:43:54,980 --> 00:43:59,960
+ So this actually we expect will normalize every single row.
+
+612
+00:43:59,960 --> 00:44:04,560
+ And we can check that this is true by taking the first row, for example, and taking it
+
+613
+00:44:04,560 --> 00:44:10,560
+ some, we expect this to be one because it's not normalized.
+
+614
+00:44:10,560 --> 00:44:15,720
+ And then we expect this now because if we actually correctly normalize all the rows, we
+
+615
+00:44:15,720 --> 00:44:17,900
+ expect to get the exact same result here.
+
+616
+00:44:17,900 --> 00:44:18,900
+ So let's run this.
+
+617
+00:44:18,900 --> 00:44:21,560
+ It's the exact same result.
+
+618
+00:44:21,560 --> 00:44:23,120
+ So this is correct.
+
+619
+00:44:23,120 --> 00:44:25,640
+ So now I would like to scare you a little bit.
+
+620
+00:44:25,640 --> 00:44:29,320
+ You actually have to like, I basically encourage you very strongly to read through broadcasting
+
+621
+00:44:29,320 --> 00:44:30,760
+ semantics.
+
+622
+00:44:30,760 --> 00:44:32,960
+ And I encourage you to treat this with respect.
+
+623
+00:44:32,960 --> 00:44:35,360
+ And it's not something to play fast and loose with.
+
+624
+00:44:35,360 --> 00:44:39,600
+ It's something to really respect, really understand and look up maybe some tutorials for broadcasting
+
+625
+00:44:39,600 --> 00:44:44,000
+ and practice it and be careful with it because you can very quickly run it to box.
+
+626
+00:44:44,000 --> 00:44:47,400
+ Let me show you what I mean.
+
+627
+00:44:47,400 --> 00:44:50,680
+ You see how here we have Pete at some of one keep them this true.
+
+628
+00:44:50,680 --> 00:44:53,200
+ The shape of this is 27 by one.
+
+629
+00:44:53,200 --> 00:44:58,640
+ Let me take out this line just so we have the n and then we can see the counts.
+
+630
+00:44:58,640 --> 00:45:05,560
+ We can see that this is all the counts across all the rows and it's 27 by one column vector,
+
+631
+00:45:05,560 --> 00:45:07,320
+ right?
+
+632
+00:45:07,320 --> 00:45:14,200
+ Now suppose that I tried to do the following, but I grace keep them this true here.
+
+633
+00:45:14,200 --> 00:45:15,200
+ What does that do?
+
+634
+00:45:15,200 --> 00:45:17,400
+ If keep them is not true, it's false.
+
+635
+00:45:17,400 --> 00:45:21,520
+ And remember, according to documentation, it gets rid of this dimension one.
+
+636
+00:45:21,520 --> 00:45:23,120
+ It squeezes it out.
+
+637
+00:45:23,120 --> 00:45:27,600
+ So basically we just get all the same counts, the same result, except the shape of it is
+
+638
+00:45:27,600 --> 00:45:29,080
+ not 27 by one.
+
+639
+00:45:29,080 --> 00:45:31,960
+ It is just 27, the one disappears.
+
+640
+00:45:31,960 --> 00:45:34,400
+ But all the counts are the same.
+
+641
+00:45:34,400 --> 00:45:40,280
+ So you'd think that this divide that would work.
+
+642
+00:45:40,280 --> 00:45:45,240
+ First of all, can we even write this and will it, is it even expected to run?
+
+643
+00:45:45,240 --> 00:45:46,240
+ Is it broadcastable?
+
+644
+00:45:46,240 --> 00:45:49,360
+ Let's determine if this result is broadcastable.
+
+645
+00:45:49,360 --> 00:45:53,160
+ P dot summit one is shape is 27.
+
+646
+00:45:53,160 --> 00:45:54,640
+ This is 27 by 27.
+
+647
+00:45:54,640 --> 00:46:00,520
+ So 27 by 27 broadcasting into 27.
+
+648
+00:46:00,520 --> 00:46:06,480
+ So now rules of broadcasting number one align all the dimensions on the right done.
+
+649
+00:46:06,480 --> 00:46:10,440
+ Now iteration over all the dimensions started from the right going to the left.
+
+650
+00:46:10,440 --> 00:46:13,240
+ All the dimensions math either be equal.
+
+651
+00:46:13,240 --> 00:46:16,160
+ One of them must be one or one that does not exist.
+
+652
+00:46:16,160 --> 00:46:17,960
+ So here they are equal.
+
+653
+00:46:17,960 --> 00:46:20,160
+ Here the dimension does not exist.
+
+654
+00:46:20,160 --> 00:46:26,400
+ So internally what broadcasting will do is it will create a one here and then we see that
+
+655
+00:46:26,400 --> 00:46:30,400
+ one of them is a one and this will get copied and this will run.
+
+656
+00:46:30,400 --> 00:46:32,040
+ This will broadcast.
+
+657
+00:46:32,040 --> 00:46:42,840
+ Okay, so you'd expect this to work because we are the broadcast and this we can divide
+
+658
+00:46:42,840 --> 00:46:43,840
+ this.
+
+659
+00:46:43,840 --> 00:46:48,320
+ Now if I run this you'd expect it to work but it doesn't.
+
+660
+00:46:48,320 --> 00:46:49,320
+ You actually get garbage.
+
+661
+00:46:49,320 --> 00:46:52,680
+ You get a wrong result because this is actually a bug.
+
+662
+00:46:52,680 --> 00:46:57,480
+ This keep them equal equals true.
+
+663
+00:46:57,480 --> 00:47:00,880
+ Makes it work.
+
+664
+00:47:00,880 --> 00:47:03,080
+ This is a bug.
+
+665
+00:47:03,080 --> 00:47:06,480
+ In both cases we are doing the correct counts.
+
+666
+00:47:06,480 --> 00:47:11,720
+ We are summing up across the rows but keep them as saving us and making it work.
+
+667
+00:47:11,720 --> 00:47:15,320
+ So in this case I would like you to encourage you to potentially pause this video at this
+
+668
+00:47:15,320 --> 00:47:21,360
+ point and try to think about why this is buggy and why the keep them was necessary.
+
+669
+00:47:21,360 --> 00:47:27,560
+ Okay, so the reason to do for this is I'm trying to hint it here when I was sort of giving
+
+670
+00:47:27,560 --> 00:47:29,760
+ you a bit of a hint on how this works.
+
+671
+00:47:29,760 --> 00:47:37,640
+ This 27 vector internally inside the broadcasting this becomes a one by 27 and one by 27 is
+
+672
+00:47:37,640 --> 00:47:39,840
+ a row vector.
+
+673
+00:47:39,840 --> 00:47:46,080
+ And now we are dividing 27 by 27 by one by 27 and torch will replicate this dimension.
+
+674
+00:47:46,080 --> 00:47:55,240
+ So basically it will take this row vector and it will copy it vertically now.
+
+675
+00:47:55,240 --> 00:48:00,560
+ 27 times, so the 27 by 27 lines exactly and element wise divides.
+
+676
+00:48:00,560 --> 00:48:06,440
+ And so basically what's happening here is we're actually normalizing the columns instead
+
+677
+00:48:06,440 --> 00:48:09,640
+ of normalizing the rows.
+
+678
+00:48:09,640 --> 00:48:15,200
+ So you can check what's happening here is that P at zero which is the first row of P
+
+679
+00:48:15,200 --> 00:48:18,840
+ dot sum is not one, it's seven.
+
+680
+00:48:18,840 --> 00:48:23,880
+ It is the first column as an example that sums to one.
+
+681
+00:48:23,880 --> 00:48:26,880
+ So to summarize where does the issue come from?
+
+682
+00:48:26,880 --> 00:48:31,320
+ The issue comes from the silent adding of a dimension here because in broadcasting rules
+
+683
+00:48:31,320 --> 00:48:35,400
+ you align on the right and go from right to left and if dimension doesn't exist you create
+
+684
+00:48:35,400 --> 00:48:36,400
+ it.
+
+685
+00:48:36,400 --> 00:48:38,080
+ So that's where the problem happens.
+
+686
+00:48:38,080 --> 00:48:39,560
+ We still did the counts correctly.
+
+687
+00:48:39,560 --> 00:48:45,840
+ We did the counts across the rows and we got the counts on the right here as a column vector.
+
+688
+00:48:45,840 --> 00:48:50,080
+ But because the key things was true this dimension was discarded and now we just have
+
+689
+00:48:50,080 --> 00:48:51,720
+ a vector of 27.
+
+690
+00:48:51,720 --> 00:48:57,200
+ And because of broadcasting the way it works this vector of 27 suddenly becomes a row vector
+
+691
+00:48:57,200 --> 00:49:01,680
+ and then this row vector gets replicated vertically and that every single point we are dividing
+
+692
+00:49:01,680 --> 00:49:07,560
+ by the count in the opposite direction.
+
+693
+00:49:07,560 --> 00:49:11,680
+ So this thing just doesn't work.
+
+694
+00:49:11,680 --> 00:49:14,400
+ This needs to be keep them as equal to true in this case.
+
+695
+00:49:14,400 --> 00:49:20,160
+ So then we have that P at zero is normalized.
+
+696
+00:49:20,160 --> 00:49:24,840
+ And conversely the first column you'd expect to potentially not be normalized.
+
+697
+00:49:24,840 --> 00:49:27,880
+ And this is what makes it work.
+
+698
+00:49:27,880 --> 00:49:33,720
+ So pretty subtle and hopefully this helps to scare you that you should have respect for
+
+699
+00:49:33,720 --> 00:49:34,720
+ broadcasting.
+
+700
+00:49:34,720 --> 00:49:39,920
+ So check your work and understand how it works under the hood and make sure that it's broadcasting
+
+701
+00:49:39,920 --> 00:49:41,240
+ in the direction that you like.
+
+702
+00:49:41,240 --> 00:49:46,840
+ Otherwise you're going to introduce very subtle bugs, very hard to find bugs and just be careful.
+
+703
+00:49:46,840 --> 00:49:48,440
+ One more note on efficiency.
+
+704
+00:49:48,440 --> 00:49:53,040
+ We don't want to be doing this here because this creates a completely new tensor that
+
+705
+00:49:53,040 --> 00:49:54,560
+ we store into P.
+
+706
+00:49:54,560 --> 00:49:58,000
+ We prefer to use in place operations if possible.
+
+707
+00:49:58,000 --> 00:50:00,360
+ So this would be an in place operation.
+
+708
+00:50:00,360 --> 00:50:01,960
+ Has the potential to be faster.
+
+709
+00:50:01,960 --> 00:50:04,680
+ It doesn't create new memory under the hood.
+
+710
+00:50:04,680 --> 00:50:06,440
+ And then let's erase this.
+
+711
+00:50:06,440 --> 00:50:08,280
+ We don't need it.
+
+712
+00:50:08,280 --> 00:50:14,440
+ And let's also just do fewer just so I'm not wasting space.
+
+713
+00:50:14,440 --> 00:50:17,200
+ Okay, so we're actually in a pretty good spot now.
+
+714
+00:50:17,200 --> 00:50:22,920
+ We trained a by gram language model and we trained it really just by counting how frequently
+
+715
+00:50:22,920 --> 00:50:28,160
+ any pairing occurs and then normalizing so that we get a nice property distribution.
+
+716
+00:50:28,160 --> 00:50:33,120
+ So really these elements of this array P are really the parameters of our by gram language
+
+717
+00:50:33,120 --> 00:50:37,160
+ model giving us and summarizing the statistics of these by grams.
+
+718
+00:50:37,160 --> 00:50:40,360
+ So we train the model and then we know how to sample from the model.
+
+719
+00:50:40,360 --> 00:50:47,200
+ We just iteratively sampled the next character and feed it in each time and get a next character.
+
+720
+00:50:47,200 --> 00:50:51,360
+ Now what I'd like to do is I'd like to somehow evaluate the quality of this model.
+
+721
+00:50:51,360 --> 00:50:55,440
+ We'd like to somehow summarize the quality of this model into a single number.
+
+722
+00:50:55,440 --> 00:50:59,280
+ How good is it at predicting the training set?
+
+723
+00:50:59,280 --> 00:51:00,280
+ And as an example.
+
+724
+00:51:00,280 --> 00:51:05,560
+ So in the training set we can evaluate now the training loss and this training loss is
+
+725
+00:51:05,560 --> 00:51:10,040
+ telling us about sort of the quality of this model in a single number just like we saw
+
+726
+00:51:10,040 --> 00:51:12,080
+ in micro grad.
+
+727
+00:51:12,080 --> 00:51:17,400
+ So let's try to think through the quality of the model and how we would evaluate it.
+
+728
+00:51:17,400 --> 00:51:21,400
+ Basically what we're going to do is we're going to copy paste this code that we previously
+
+729
+00:51:21,400 --> 00:51:22,920
+ used for counting.
+
+730
+00:51:22,920 --> 00:51:24,400
+ Okay.
+
+731
+00:51:24,400 --> 00:51:26,120
+ And let me just print these by grams first.
+
+732
+00:51:26,120 --> 00:51:30,520
+ We're going to use F strings and I'm going to print character one followed by character
+
+733
+00:51:30,520 --> 00:51:31,520
+ two.
+
+734
+00:51:31,520 --> 00:51:33,720
+ These are the by grams and then I don't want to do it for all the words.
+
+735
+00:51:33,720 --> 00:51:36,240
+ Let's just do first three words.
+
+736
+00:51:36,240 --> 00:51:40,400
+ So here we have Emma, Olivia and Eva by grams.
+
+737
+00:51:40,400 --> 00:51:44,840
+ Now what we'd like to do is we'd like to basically look at the probability that the
+
+738
+00:51:44,840 --> 00:51:48,400
+ model assigns to every one of these by grams.
+
+739
+00:51:48,400 --> 00:51:54,160
+ So in other words we can look at the probability which is summarized in the matrix B of Ix1
+
+740
+00:51:54,160 --> 00:52:00,920
+ and then we can print it here as probability.
+
+741
+00:52:00,920 --> 00:52:07,040
+ And because these probabilities are way too large let me percent or call on point 4f to
+
+742
+00:52:07,040 --> 00:52:09,400
+ like truncate it a bit.
+
+743
+00:52:09,400 --> 00:52:10,400
+ So what do we have here?
+
+744
+00:52:10,400 --> 00:52:13,840
+ We're looking at the probabilities that the model assigns to every one of these by grams
+
+745
+00:52:13,840 --> 00:52:15,440
+ in the data set.
+
+746
+00:52:15,440 --> 00:52:19,960
+ And so we can see some of them are 4%, 3%, etc. just to have a measuring stick in our
+
+747
+00:52:19,960 --> 00:52:21,960
+ mind by the way.
+
+748
+00:52:21,960 --> 00:52:27,120
+ We have 27 possible characters or tokens and if everything was equally likely then you'd
+
+749
+00:52:27,120 --> 00:52:32,680
+ expect all these probabilities to be 4% roughly.
+
+750
+00:52:32,680 --> 00:52:37,400
+ So anything above 4% means that we've learned something useful from these by grams statistics.
+
+751
+00:52:37,400 --> 00:52:43,360
+ And you see that roughly some of these are 4% but some of them are as high as 40%, 35%
+
+752
+00:52:43,360 --> 00:52:44,360
+ and so on.
+
+753
+00:52:44,360 --> 00:52:47,480
+ So you see that the model actually assigned a pretty high probability to whatever is in
+
+754
+00:52:47,480 --> 00:52:48,520
+ the training set.
+
+755
+00:52:48,520 --> 00:52:51,000
+ And so that's a good thing.
+
+756
+00:52:51,000 --> 00:52:55,080
+ So if you have a very good model you'd expect that these probabilities should be near 1 because
+
+757
+00:52:55,080 --> 00:52:59,240
+ that means that your model is correctly predicting what's going to come next, especially in
+
+758
+00:52:59,240 --> 00:53:03,000
+ the training set where you train your model.
+
+759
+00:53:03,000 --> 00:53:07,880
+ So now we'd like to think about how can we summarize these probabilities into a single
+
+760
+00:53:07,880 --> 00:53:11,920
+ number that measures the quality of this model.
+
+761
+00:53:11,920 --> 00:53:16,120
+ Now when you look at the literature into maximum likelihood estimation and statistical modeling
+
+762
+00:53:16,120 --> 00:53:20,960
+ and so on you'll see that what's typically used here is something called the likelihood.
+
+763
+00:53:20,960 --> 00:53:26,120
+ And the likelihood is the product of all of these probabilities.
+
+764
+00:53:26,120 --> 00:53:30,320
+ And so the product of all of these probabilities is the likelihood and it's really telling us
+
+765
+00:53:30,320 --> 00:53:37,880
+ about the probability of the entire dataset assigned by the model that we've trained.
+
+766
+00:53:37,880 --> 00:53:39,640
+ And that is a measure of quality.
+
+767
+00:53:39,640 --> 00:53:44,560
+ So the product of these should be as high as possible when you are training the model
+
+768
+00:53:44,560 --> 00:53:50,560
+ and when you have a good model your product of these probabilities should be very high.
+
+769
+00:53:50,560 --> 00:53:54,560
+ Now because the product of these probabilities is an unwieldy thing to work with, you can
+
+770
+00:53:54,560 --> 00:53:56,480
+ see that all of them are between 0 and 1.
+
+771
+00:53:56,480 --> 00:54:01,120
+ So your product of these probabilities will be a very tiny number.
+
+772
+00:54:01,120 --> 00:54:05,280
+ So for convenience what people work with usually is not the likelihood but they work
+
+773
+00:54:05,280 --> 00:54:08,080
+ with what's called the log likelihood.
+
+774
+00:54:08,080 --> 00:54:11,080
+ So the product of these is the likelihood.
+
+775
+00:54:11,080 --> 00:54:15,280
+ To get the log likelihood we just have to take the log of the probability.
+
+776
+00:54:15,280 --> 00:54:19,920
+ And so the log of the probability here, the log of x from 0 to 1.
+
+777
+00:54:19,920 --> 00:54:27,440
+ The log is a, you see here monotonic transformation of the probability where if you pass in 1 you
+
+778
+00:54:27,440 --> 00:54:29,040
+ get 0.
+
+779
+00:54:29,040 --> 00:54:32,480
+ So probability 1 gets your log probability of 0.
+
+780
+00:54:32,480 --> 00:54:37,040
+ And then as you go lower and lower probability the log will grow more and more negative until
+
+781
+00:54:37,040 --> 00:54:42,080
+ all the way to negative infinity at 0.
+
+782
+00:54:42,080 --> 00:54:47,120
+ So here we have a log problem which is really just the torch dot log of probability.
+
+783
+00:54:47,120 --> 00:54:50,240
+ So let's print it out to get a sense of what that looks like.
+
+784
+00:54:50,240 --> 00:54:56,880
+ Log problem also 0.4f.
+
+785
+00:54:56,880 --> 00:55:01,480
+ So as you can see when we plug in numbers that are very close, some of our higher numbers
+
+786
+00:55:01,480 --> 00:55:03,680
+ we get closer and closer to 0.
+
+787
+00:55:03,680 --> 00:55:07,800
+ And then if we plug in very bad probabilities we get more and more negative number.
+
+788
+00:55:07,800 --> 00:55:09,760
+ That's bad.
+
+789
+00:55:09,760 --> 00:55:15,560
+ So and the reason we work with this is for a large extent convenience, right?
+
+790
+00:55:15,560 --> 00:55:19,240
+ Because we have mathematically that if you have some product a times b times c of all
+
+791
+00:55:19,240 --> 00:55:21,360
+ these probabilities, right?
+
+792
+00:55:21,360 --> 00:55:25,640
+ The likelihood is the product of all these probabilities.
+
+793
+00:55:25,640 --> 00:55:35,400
+ Then the log of these is just log of a plus log of b plus log of c.
+
+794
+00:55:35,400 --> 00:55:40,000
+ If you remember your logs from your high school or undergrad and so on.
+
+795
+00:55:40,000 --> 00:55:43,480
+ So we have that basically the likelihood is the product of probabilities.
+
+796
+00:55:43,480 --> 00:55:49,040
+ The log likelihood is just the sum of the logs of the individual probabilities.
+
+797
+00:55:49,040 --> 00:55:54,920
+ So log likelihood starts at 0.
+
+798
+00:55:54,920 --> 00:56:00,640
+ And then log likelihood here we can just accumulate simply.
+
+799
+00:56:00,640 --> 00:56:05,760
+ And then the end we can print this.
+
+800
+00:56:05,760 --> 00:56:12,160
+ And then we can get the log likelihood of strings.
+
+801
+00:56:12,160 --> 00:56:14,160
+ Maybe you're familiar with this.
+
+802
+00:56:14,160 --> 00:56:20,040
+ So log likelihood is negative 38.
+
+803
+00:56:20,040 --> 00:56:21,520
+ Okay.
+
+804
+00:56:21,520 --> 00:56:27,960
+ Now we actually want, so how high can log likelihood get?
+
+805
+00:56:27,960 --> 00:56:30,080
+ It can go to 0.
+
+806
+00:56:30,080 --> 00:56:33,080
+ So when all the probabilities are 1, log likelihood will be 0.
+
+807
+00:56:33,080 --> 00:56:37,640
+ And then when all the probabilities are lower, this will grow more and more negative.
+
+808
+00:56:37,640 --> 00:56:41,400
+ Now we don't actually like this because what we'd like is a loss function.
+
+809
+00:56:41,400 --> 00:56:47,320
+ And a loss function has the semantics that low is good because we're trying to minimize
+
+810
+00:56:47,320 --> 00:56:48,400
+ the loss.
+
+811
+00:56:48,400 --> 00:56:50,600
+ So we actually need to invert this.
+
+812
+00:56:50,600 --> 00:56:56,360
+ And that's what gives us something called the negative log likelihood.
+
+813
+00:56:56,360 --> 00:57:04,120
+ Negative log likelihood is just negative of the log likelihood.
+
+814
+00:57:04,120 --> 00:57:06,880
+ These are F strings by the way, if you'd like to look this up.
+
+815
+00:57:06,880 --> 00:57:09,600
+ Negative log likelihood equals.
+
+816
+00:57:09,600 --> 00:57:12,320
+ So negative log likelihood now is just negative of it.
+
+817
+00:57:12,320 --> 00:57:18,520
+ And so the negative log likelihood is a very nice loss function because the lowest it can
+
+818
+00:57:18,520 --> 00:57:20,040
+ get is 0.
+
+819
+00:57:20,040 --> 00:57:24,920
+ And the higher it is, the worse off the predictions are that you're making.
+
+820
+00:57:24,920 --> 00:57:29,320
+ And then one more modification to this that sometimes people do is that for convenience,
+
+821
+00:57:29,320 --> 00:57:34,640
+ they actually like to normalize by, they like to make it an average instead of a sum.
+
+822
+00:57:34,640 --> 00:57:39,520
+ And so here, let's just keep some counts as well.
+
+823
+00:57:39,520 --> 00:57:43,040
+ So n plus equals 1 starts at 0.
+
+824
+00:57:43,040 --> 00:57:50,720
+ And then here, we can have sort of like a normalized log likelihood.
+
+825
+00:57:50,720 --> 00:57:55,960
+ Which is normalized by the count, then we will sort of get the average log likelihood.
+
+826
+00:57:55,960 --> 00:57:59,520
+ So this would be usually our loss function here.
+
+827
+00:57:59,520 --> 00:58:02,520
+ This is what we would use.
+
+828
+00:58:02,520 --> 00:58:06,680
+ So our loss function for the training set assigned by the model is 2.4.
+
+829
+00:58:06,680 --> 00:58:08,800
+ That's the quality of this model.
+
+830
+00:58:08,800 --> 00:58:10,680
+ And the lower it is, the better off we are.
+
+831
+00:58:10,680 --> 00:58:13,800
+ And the higher it is, the worse off we are.
+
+832
+00:58:13,800 --> 00:58:20,640
+ And the job of our training is to find the parameters that minimize the negative log likelihood
+
+833
+00:58:20,640 --> 00:58:23,160
+ loss.
+
+834
+00:58:23,160 --> 00:58:25,160
+ And that would be like a high quality model.
+
+835
+00:58:25,160 --> 00:58:28,240
+ Okay, so to summarize, I actually wrote it out here.
+
+836
+00:58:28,240 --> 00:58:34,440
+ So our goal is to maximize likelihood, which is the product of all the probabilities assigned
+
+837
+00:58:34,440 --> 00:58:35,440
+ by the model.
+
+838
+00:58:35,440 --> 00:58:39,480
+ And we want to maximize this likelihood with respect to the model parameters.
+
+839
+00:58:39,480 --> 00:58:43,680
+ And in our case, the model parameters here are defined in the table.
+
+840
+00:58:43,680 --> 00:58:48,560
+ These numbers, the probabilities are the model parameters, sort of in our Bragg-Grom-Rangage
+
+841
+00:58:48,560 --> 00:58:49,560
+ models so far.
+
+842
+00:58:49,560 --> 00:58:53,840
+ But you have to keep in mind that here we are storing everything in a table format, the
+
+843
+00:58:53,840 --> 00:58:54,840
+ probabilities.
+
+844
+00:58:54,840 --> 00:59:00,360
+ But what's coming up as a brief preview is that these numbers will not be kept explicitly,
+
+845
+00:59:00,360 --> 00:59:03,320
+ but these numbers will be calculated by a neural network.
+
+846
+00:59:03,320 --> 00:59:04,800
+ So that's coming up.
+
+847
+00:59:04,800 --> 00:59:07,800
+ And we want to change and tune the parameters of these neural arcs.
+
+848
+00:59:07,800 --> 00:59:13,520
+ We want to change these parameters to maximize the likelihood, the product of the probabilities.
+
+849
+00:59:13,520 --> 00:59:17,520
+ Now maximizing the likelihood is equivalent to maximizing the log likelihood, because
+
+850
+00:59:17,520 --> 00:59:20,200
+ log is a monotonic function.
+
+851
+00:59:20,200 --> 00:59:22,280
+ Here's the graph of log.
+
+852
+00:59:22,280 --> 00:59:27,560
+ And basically, all it is doing is it's just scaling your, you can look at it as just a
+
+853
+00:59:27,560 --> 00:59:29,760
+ scaling of the loss function.
+
+854
+00:59:29,760 --> 00:59:35,080
+ And so the optimization problem here and here are actually equivalent, because this is just
+
+855
+00:59:35,080 --> 00:59:36,080
+ a scaling.
+
+856
+00:59:36,080 --> 00:59:37,280
+ You can look at it that way.
+
+857
+00:59:37,280 --> 00:59:42,480
+ And so these are two identical optimization problems.
+
+858
+00:59:42,480 --> 00:59:46,440
+ Maximizing the log likelihood is equivalent to minimizing the negative log likelihood.
+
+859
+00:59:46,440 --> 00:59:50,560
+ And then in practice, people actually minimize the average negative log likelihood to get
+
+860
+00:59:50,560 --> 00:59:53,200
+ numbers like 2.4.
+
+861
+00:59:53,200 --> 00:59:56,480
+ And then this summarizes the quality of your model.
+
+862
+00:59:56,480 --> 00:59:59,960
+ And we'd like to minimize it and make it as small as possible.
+
+863
+00:59:59,960 --> 01:00:02,640
+ And the lowest it can get is zero.
+
+864
+01:00:02,640 --> 01:00:08,600
+ And the lower it is, the better off your model is, because it's assigning high probabilities
+
+865
+01:00:08,600 --> 01:00:09,760
+ to your data.
+
+866
+01:00:09,760 --> 01:00:12,720
+ Now let's estimate the probability over the entire training set, just to make sure that
+
+867
+01:00:12,720 --> 01:00:15,160
+ we get something around 2.4.
+
+868
+01:00:15,160 --> 01:00:19,400
+ Let's run this over the entire, oops, let's take out the print statement as well.
+
+869
+01:00:19,400 --> 01:00:24,720
+ Okay, 2.4.5 or the entire training set.
+
+870
+01:00:24,720 --> 01:00:27,400
+ Now what I'd like to show you is that you can actually evaluate the probability for any
+
+871
+01:00:27,400 --> 01:00:28,560
+ word that you want.
+
+872
+01:00:28,560 --> 01:00:36,080
+ Like for example, if we just test a single word, Andre, and bring back the print statement,
+
+873
+01:00:36,080 --> 01:00:40,920
+ then you see that Andre is actually kind of like an unlikely word, like on average, we
+
+874
+01:00:40,920 --> 01:00:46,520
+ take three log probability to represent it, and roughly that's because EJ apparently is
+
+875
+01:00:46,520 --> 01:00:50,200
+ very uncommon as an example.
+
+876
+01:00:50,200 --> 01:00:57,080
+ Now think through this, when I take Andre and I append Q, and I test the probability of
+
+877
+01:00:57,080 --> 01:01:00,400
+ it, Andre Q.
+
+878
+01:01:00,400 --> 01:01:03,240
+ We actually get infinity.
+
+879
+01:01:03,240 --> 01:01:07,840
+ And that's because JQ has a 0% probability according to our model.
+
+880
+01:01:07,840 --> 01:01:09,560
+ So the log likelihood.
+
+881
+01:01:09,560 --> 01:01:14,760
+ So the log of 0 will be negative infinity, we get infinite loss.
+
+882
+01:01:14,760 --> 01:01:15,960
+ So it's kind of undesirable, right?
+
+883
+01:01:15,960 --> 01:01:19,400
+ Because we plugged in a string that could be like a somewhat reasonable name.
+
+884
+01:01:19,400 --> 01:01:24,640
+ But basically what this is saying is that this model is exactly 0% likely to predict
+
+885
+01:01:24,640 --> 01:01:26,800
+ this name.
+
+886
+01:01:26,800 --> 01:01:30,000
+ And our loss is infinity on this example.
+
+887
+01:01:30,000 --> 01:01:38,080
+ And really what the reason for that is that J is followed by Q, 0 times, where is Q?
+
+888
+01:01:38,080 --> 01:01:39,520
+ JQ is 0.
+
+889
+01:01:39,520 --> 01:01:42,440
+ And so JQ is 0% likely.
+
+890
+01:01:42,440 --> 01:01:45,440
+ So it's actually kind of gross, and people don't like this too much.
+
+891
+01:01:45,440 --> 01:01:49,680
+ To fix this, there's a very simple fix that people like to do to sort of smooth out your
+
+892
+01:01:49,680 --> 01:01:52,360
+ model a little bit, and it's called model smoothing.
+
+893
+01:01:52,360 --> 01:01:56,440
+ And roughly what's happening is that we will add some fake accounts.
+
+894
+01:01:56,440 --> 01:02:01,160
+ So imagine adding a count of 1 to everything.
+
+895
+01:02:01,160 --> 01:02:08,000
+ So we add a count of 1 like this, and then we recalculate the probabilities.
+
+896
+01:02:08,000 --> 01:02:09,000
+ And that's model smoothing.
+
+897
+01:02:09,000 --> 01:02:10,280
+ And you can add as much as you like.
+
+898
+01:02:10,280 --> 01:02:13,160
+ You can add 5, and that will give you a smoother model.
+
+899
+01:02:13,160 --> 01:02:17,960
+ And the more you add here, the more uniform model you're going to have.
+
+900
+01:02:17,960 --> 01:02:22,520
+ And the less you add, the more peaked model you're going to have, of course.
+
+901
+01:02:22,520 --> 01:02:25,960
+ So 1 is like a pretty decent count to add.
+
+902
+01:02:25,960 --> 01:02:31,320
+ And that will ensure that there will be no zeros in our probability matrix P. And so
+
+903
+01:02:31,320 --> 01:02:33,840
+ this will of course change the generations a little bit.
+
+904
+01:02:33,840 --> 01:02:36,800
+ In this case it didn't, but it in principle it could.
+
+905
+01:02:36,800 --> 01:02:41,360
+ But what that's going to do now is that nothing will be infinity unlikely.
+
+906
+01:02:41,360 --> 01:02:44,960
+ So now our model will predict some other probability.
+
+907
+01:02:44,960 --> 01:02:47,880
+ And we see that JQ now has a very small probability.
+
+908
+01:02:47,880 --> 01:02:51,920
+ So the model still finds it very surprising that this was a word or a bygram, but we
+
+909
+01:02:51,920 --> 01:02:52,920
+ don't get negative infinity.
+
+910
+01:02:52,920 --> 01:02:56,320
+ So it's kind of like a nice fix that people like to apply sometimes and it's called model
+
+911
+01:02:56,320 --> 01:02:57,320
+ smoothing.
+
+912
+01:02:57,320 --> 01:03:01,680
+ Okay, so we've now trained a respectable bygram character level language model.
+
+913
+01:03:01,680 --> 01:03:06,800
+ And we saw that we both sort of trained the model by looking at the counts of all the
+
+914
+01:03:06,800 --> 01:03:11,680
+ bygrams and normalizing the rows to get probability distributions.
+
+915
+01:03:11,680 --> 01:03:19,720
+ We saw that we can also then use those parameters of this model to perform sampling of new words.
+
+916
+01:03:19,720 --> 01:03:22,440
+ So we sample new names according to those distributions.
+
+917
+01:03:22,440 --> 01:03:25,680
+ And we also saw that we can evaluate the quality of this model.
+
+918
+01:03:25,680 --> 01:03:28,840
+ And the quality of this model is summarized in a single number, which is the negative
+
+919
+01:03:28,840 --> 01:03:34,480
+ log likelihood and the lower this number is, the better the model is because it is giving
+
+920
+01:03:34,480 --> 01:03:40,360
+ high probabilities to the actual next characters in all the bygrams in our training set.
+
+921
+01:03:40,360 --> 01:03:44,960
+ So that's all well and good, but we've arrived at this model explicitly by doing something
+
+922
+01:03:44,960 --> 01:03:46,280
+ that felt sensible.
+
+923
+01:03:46,280 --> 01:03:51,200
+ We were just performing counts and then we were normalizing those counts.
+
+924
+01:03:51,200 --> 01:03:54,280
+ Now what I would like to do is I would like to take an alternative approach.
+
+925
+01:03:54,280 --> 01:03:58,480
+ We will end up in a very, very similar position, but the approach will look very different because
+
+926
+01:03:58,480 --> 01:04:02,520
+ I would like to cast the problem of bygram character level language modeling into the
+
+927
+01:04:02,520 --> 01:04:04,440
+ neural network framework.
+
+928
+01:04:04,440 --> 01:04:08,400
+ And in neural network framework, we're going to approach things slightly differently, but
+
+929
+01:04:08,400 --> 01:04:10,320
+ again, end up in a very similar spot.
+
+930
+01:04:10,320 --> 01:04:12,160
+ I'll go into that later.
+
+931
+01:04:12,160 --> 01:04:17,440
+ Now our neural network is going to be a still a bygram character level language model.
+
+932
+01:04:17,440 --> 01:04:20,600
+ So it receives a single character as an input.
+
+933
+01:04:20,600 --> 01:04:26,000
+ Then there's neural network with some weights or some parameters W. And it's going to output
+
+934
+01:04:26,000 --> 01:04:29,320
+ the probability distribution over the next character in a sequence.
+
+935
+01:04:29,320 --> 01:04:34,160
+ It's going to make guesses as to what is likely to follow this character that was input to
+
+936
+01:04:34,160 --> 01:04:36,160
+ the model.
+
+937
+01:04:36,160 --> 01:04:40,400
+ And then in addition to that, we're going to be able to evaluate any setting of the parameters
+
+938
+01:04:40,400 --> 01:04:45,200
+ of the neural network because we have the loss function, the negative log likelihood.
+
+939
+01:04:45,200 --> 01:04:49,920
+ So we're going to take a look at its probability distributions and we're going to use the labels
+
+940
+01:04:49,920 --> 01:04:53,760
+ which are basically just the identity of the next character in that bygram, the second
+
+941
+01:04:53,760 --> 01:04:54,920
+ character.
+
+942
+01:04:54,920 --> 01:04:59,160
+ So knowing what second character actually comes next in the bygram allows us to then
+
+943
+01:04:59,160 --> 01:05:04,120
+ look at what, how high of probability the model assigns to that character.
+
+944
+01:05:04,120 --> 01:05:07,280
+ And then we of course want the probability to be very high.
+
+945
+01:05:07,280 --> 01:05:11,000
+ And that is another way of saying that the loss is low.
+
+946
+01:05:11,000 --> 01:05:15,680
+ So we're going to use gradient based optimization then to tune the parameters of this network,
+
+947
+01:05:15,680 --> 01:05:18,640
+ because we have the loss function and we're going to minimize it.
+
+948
+01:05:18,640 --> 01:05:22,280
+ So we're going to tune the weights so that the neural net is correctly predicting the
+
+949
+01:05:22,280 --> 01:05:24,600
+ probabilities for the next character.
+
+950
+01:05:24,600 --> 01:05:25,760
+ So let's get started.
+
+951
+01:05:25,760 --> 01:05:29,560
+ The first thing I want to do is I want to compile the training set of this neural network,
+
+952
+01:05:29,560 --> 01:05:30,560
+ right?
+
+953
+01:05:30,560 --> 01:05:36,000
+ So create the training set of all the bygrams.
+
+954
+01:05:36,000 --> 01:05:38,000
+ Okay.
+
+955
+01:05:38,000 --> 01:05:47,640
+ And here I'm going to copy paste this code because this code iterates over all the bygrams.
+
+956
+01:05:47,640 --> 01:05:51,400
+ So here we start with the words, we iterate over all the bygrams and previously as you
+
+957
+01:05:51,400 --> 01:05:53,280
+ recall, we did the counts.
+
+958
+01:05:53,280 --> 01:05:54,680
+ But now we're not going to do counts.
+
+959
+01:05:54,680 --> 01:05:57,120
+ We're just creating a training set.
+
+960
+01:05:57,120 --> 01:06:02,280
+ Now this training set will be made up of two lists.
+
+961
+01:06:02,280 --> 01:06:11,520
+ We have the inputs and the targets, the, the links and these bygrams will denote x, y.
+
+962
+01:06:11,520 --> 01:06:13,400
+ Those are the characters, right?
+
+963
+01:06:13,400 --> 01:06:16,520
+ And so we're given the first character of the bygram and then we're trying to predict
+
+964
+01:06:16,520 --> 01:06:18,040
+ the next one.
+
+965
+01:06:18,040 --> 01:06:19,560
+ Both of these are going to be integers.
+
+966
+01:06:19,560 --> 01:06:27,920
+ So here we'll take x is data, pend is just X one, y is data pend, I X two.
+
+967
+01:06:27,920 --> 01:06:31,680
+ And then here we actually don't want lists of integers.
+
+968
+01:06:31,680 --> 01:06:33,800
+ We will create tensors out of these.
+
+969
+01:06:33,800 --> 01:06:41,680
+ So X is torch dot tensor of X is and wise is torch dot tensor of wise.
+
+970
+01:06:41,680 --> 01:06:45,400
+ And then we don't actually want to take all the words just yet because I want everything
+
+971
+01:06:45,400 --> 01:06:47,160
+ to be manageable.
+
+972
+01:06:47,160 --> 01:06:51,440
+ So let's just do the first word which is Emma.
+
+973
+01:06:51,440 --> 01:06:55,680
+ And then it's clear what these X is and wise would be.
+
+974
+01:06:55,680 --> 01:07:01,800
+ Here let me print character one character two just so you see what's going on here.
+
+975
+01:07:01,800 --> 01:07:09,000
+ So the bygrams of these characters is dot E E M M M A dot.
+
+976
+01:07:09,000 --> 01:07:13,520
+ So this single word as I mentioned has one, two, three, four, five examples for our neural
+
+977
+01:07:13,520 --> 01:07:14,520
+ network.
+
+978
+01:07:14,520 --> 01:07:17,800
+ There are five separate examples in Emma.
+
+979
+01:07:17,800 --> 01:07:19,520
+ And those examples are here.
+
+980
+01:07:19,520 --> 01:07:26,040
+ When the input to the neural network is integer zero, the desired label is integer five, which
+
+981
+01:07:26,040 --> 01:07:31,400
+ corresponds to E. When the input to the neural network is five, we want its weights to be
+
+982
+01:07:31,400 --> 01:07:35,320
+ arranged so that 13 gets a very high probability.
+
+983
+01:07:35,320 --> 01:07:39,400
+ When 13 is put in, we want 13 to have a high probability.
+
+984
+01:07:39,400 --> 01:07:43,920
+ When 13 is put in, we also want one to have a high probability.
+
+985
+01:07:43,920 --> 01:07:47,680
+ And one is input, we want zero to have a very high probability.
+
+986
+01:07:47,680 --> 01:07:55,160
+ So there are five separate input examples to a neural net in this data set.
+
+987
+01:07:55,160 --> 01:07:59,880
+ I wanted to add a tangent of a note of caution to be careful with a lot of the APIs of some
+
+988
+01:07:59,880 --> 01:08:01,680
+ of these frameworks.
+
+989
+01:08:01,680 --> 01:08:08,120
+ You saw me silently use torch dot tensor with a lowercase T and the output looked right.
+
+990
+01:08:08,120 --> 01:08:12,000
+ But you should be aware that there's actually two ways of constructing a tensor.
+
+991
+01:08:12,000 --> 01:08:17,000
+ There's a torch dot lowercase tensor and there's also a torch dot capital tensor class, which
+
+992
+01:08:17,000 --> 01:08:18,880
+ you can also construct.
+
+993
+01:08:18,880 --> 01:08:20,280
+ So you can actually call both.
+
+994
+01:08:20,280 --> 01:08:25,600
+ You can also do torch dot capital tensor and you get an X as in Y as well.
+
+995
+01:08:25,600 --> 01:08:29,160
+ So that's not confusing at all.
+
+996
+01:08:29,160 --> 01:08:31,920
+ There are threads on what is the difference between these two.
+
+997
+01:08:31,920 --> 01:08:36,280
+ And unfortunately, the docs are just like not clear on the difference.
+
+998
+01:08:36,280 --> 01:08:40,960
+ And when you look at the docs of lowercase tensor, construct tensor with no autograph
+
+999
+01:08:40,960 --> 01:08:46,880
+ history by copying data, it's just like it doesn't make sense.
+
+1000
+01:08:46,880 --> 01:08:50,120
+ So the actual difference, as far as I can tell, is explained eventually in this random
+
+1001
+01:08:50,120 --> 01:08:51,320
+ thread that you can Google.
+
+1002
+01:08:51,320 --> 01:08:58,880
+ And really it comes down to, I believe, that, where is this?
+
+1003
+01:08:58,880 --> 01:09:01,920
+ Torch dot tensor in first the D type, the data type automatically.
+
+1004
+01:09:01,920 --> 01:09:04,520
+ Well torch dot tensor just returns a float tensor.
+
+1005
+01:09:04,520 --> 01:09:08,000
+ I would recommend stick to torch dot lowercase tensor.
+
+1006
+01:09:08,000 --> 01:09:15,040
+ So indeed, we see that when I construct this with a capital T, the data type here of X
+
+1007
+01:09:15,040 --> 01:09:18,400
+ is float 32.
+
+1008
+01:09:18,400 --> 01:09:26,960
+ But torch dot lowercase tensor, you see how it's now X dot D type is now integer.
+
+1009
+01:09:26,960 --> 01:09:32,600
+ So it's advised that you use lowercase T and you can read more about it if you like in
+
+1010
+01:09:32,600 --> 01:09:34,480
+ some of these threads.
+
+1011
+01:09:34,480 --> 01:09:39,560
+ But basically, I'm pointing out some of these things because I want to caution you and I
+
+1012
+01:09:39,560 --> 01:09:44,400
+ want you to get used to reading a lot of documentation and reading through a lot of
+
+1013
+01:09:44,400 --> 01:09:47,320
+ Q and A's and threads like this.
+
+1014
+01:09:47,320 --> 01:09:51,440
+ And some of this stuff is unfortunately not easy and not very well documented and you
+
+1015
+01:09:51,440 --> 01:09:52,880
+ have to be careful out there.
+
+1016
+01:09:52,880 --> 01:09:58,280
+ What we want here is integers because that's what makes sense.
+
+1017
+01:09:58,280 --> 01:10:01,160
+ And so lowercase tensor is what we are using.
+
+1018
+01:10:01,160 --> 01:10:05,200
+ Okay, now we want to think through how we're going to feed in these examples into a neural
+
+1019
+01:10:05,200 --> 01:10:06,440
+ network.
+
+1020
+01:10:06,440 --> 01:10:11,560
+ Now it's not quite as straightforward as plugging it in because these examples right now are
+
+1021
+01:10:11,560 --> 01:10:12,560
+ integers.
+
+1022
+01:10:12,560 --> 01:10:16,760
+ So there's like a zero five or thirteen, it gives us the index of the character and you
+
+1023
+01:10:16,760 --> 01:10:20,200
+ can't just plug an integer index into a neural net.
+
+1024
+01:10:20,200 --> 01:10:27,080
+ These neural nets are sort of made up of these neurons and these neurons have weights.
+
+1025
+01:10:27,080 --> 01:10:32,040
+ And as you saw in micro grad, these weights act multiplicatively on the inputs W X plus
+
+1026
+01:10:32,040 --> 01:10:34,440
+ B, there's 10 Hs and so on.
+
+1027
+01:10:34,440 --> 01:10:37,920
+ And so it doesn't really make sense to make an input neuron take on integer values that
+
+1028
+01:10:37,920 --> 01:10:41,920
+ you feed in and then multiply on with weights.
+
+1029
+01:10:41,920 --> 01:10:47,200
+ So instead, a common way of encoding integers is what's called one-hot encoding.
+
+1030
+01:10:47,200 --> 01:10:52,720
+ In one-hot encoding, we take an integer like thirteen and we create a vector that is all
+
+1031
+01:10:52,720 --> 01:10:58,480
+ zeros except for the thirteenth dimension which we turn to a one and then that vector
+
+1032
+01:10:58,480 --> 01:11:01,280
+ can feed into a neural net.
+
+1033
+01:11:01,280 --> 01:11:09,240
+ Now conveniently PyTorch actually has something called the one-hot function inside Torch and
+
+1034
+01:11:09,240 --> 01:11:10,480
+ in functional.
+
+1035
+01:11:10,480 --> 01:11:15,320
+ It takes a tensor made up of integers.
+
+1036
+01:11:15,320 --> 01:11:19,480
+ Long is an integer.
+
+1037
+01:11:19,480 --> 01:11:26,040
+ And it also takes a number of classes which is how large you want your tensor, your vector
+
+1038
+01:11:26,040 --> 01:11:27,960
+ to be.
+
+1039
+01:11:27,960 --> 01:11:33,200
+ So here, let's import Torch dot and in that functional SF, this is a common way of importing
+
+1040
+01:11:33,200 --> 01:11:34,360
+ it.
+
+1041
+01:11:34,360 --> 01:11:40,200
+ And then let's do F dot one-hot and we feed in the integers that we want to encode.
+
+1042
+01:11:40,200 --> 01:11:46,120
+ So we can actually feed in the entire array of Xs and we can tell it that num classes
+
+1043
+01:11:46,120 --> 01:11:49,600
+ is twenty-seven so it doesn't have to try to guess it.
+
+1044
+01:11:49,600 --> 01:11:54,880
+ It may have guessed that it's only thirteen and would give us an incorrect result.
+
+1045
+01:11:54,880 --> 01:11:56,080
+ So this is the one-hot.
+
+1046
+01:11:56,080 --> 01:12:02,320
+ Let's call this X ink for X encoded.
+
+1047
+01:12:02,320 --> 01:12:09,400
+ And then we see that X encoded, that shape is five by twenty-seven and we can also visualize
+
+1048
+01:12:09,400 --> 01:12:14,400
+ it PLT dot time show of X ink to make it a little bit more clear because this is a little
+
+1049
+01:12:14,400 --> 01:12:15,700
+ messy.
+
+1050
+01:12:15,700 --> 01:12:20,720
+ So we see that we've encoded all the five examples into vectors.
+
+1051
+01:12:20,720 --> 01:12:25,040
+ We have five examples, so we have five rows and each row here is now an example into a
+
+1052
+01:12:25,040 --> 01:12:26,520
+ neural mat.
+
+1053
+01:12:26,520 --> 01:12:32,120
+ And we see that the appropriate bit is turned on as a one and everything else is zero.
+
+1054
+01:12:32,120 --> 01:12:38,880
+ So here, for example, the zero-th bit is turned on, the fifth bit is turned on, the thirteenth
+
+1055
+01:12:38,880 --> 01:12:44,860
+ bits are turned on for both of these examples and the first bit here is turned on.
+
+1056
+01:12:44,860 --> 01:12:51,240
+ So that's how we can encode integers into vectors and then these vectors can feed in
+
+1057
+01:12:51,240 --> 01:12:52,240
+ to neural nets.
+
+1058
+01:12:52,240 --> 01:12:56,320
+ One more issue to be careful with here, by the way, is let's look at the data type of
+
+1059
+01:12:56,320 --> 01:12:57,320
+ vector encoding.
+
+1060
+01:12:57,320 --> 01:12:59,680
+ We always want to be careful with data types.
+
+1061
+01:12:59,680 --> 01:13:03,080
+ What would you expect X encoding's data type to be?
+
+1062
+01:13:03,080 --> 01:13:06,440
+ When we're plugging numbers into neural nets, we don't want them to be integers.
+
+1063
+01:13:06,440 --> 01:13:10,720
+ We want them to be floating point numbers that can take on various values.
+
+1064
+01:13:10,720 --> 01:13:14,560
+ But the D type here is actually sixty-four bit integer.
+
+1065
+01:13:14,560 --> 01:13:19,740
+ And the reason for that I suspect is that one hot received a sixty-four bit integer here
+
+1066
+01:13:19,740 --> 01:13:22,180
+ and it returned the same data type.
+
+1067
+01:13:22,180 --> 01:13:26,020
+ And when you look at the signature of one hot, it doesn't even take a D type, a desired
+
+1068
+01:13:26,020 --> 01:13:28,700
+ data type of the output tensor.
+
+1069
+01:13:28,700 --> 01:13:32,100
+ And so we can't, in a lot of functions in Torter, you'd be able to do something like
+
+1070
+01:13:32,100 --> 01:13:38,180
+ D type equals Torter.float32, which is what we want, but one hot does not support that.
+
+1071
+01:13:38,180 --> 01:13:43,500
+ So instead, we're going to want to cast this to float like this.
+
+1072
+01:13:43,500 --> 01:13:46,860
+ So that these, everything is the same.
+
+1073
+01:13:46,860 --> 01:13:50,220
+ Everything looks the same, but the D type is float32.
+
+1074
+01:13:50,220 --> 01:13:53,540
+ And floats can feed into neural nets.
+
+1075
+01:13:53,540 --> 01:13:56,300
+ So now let's construct our first neuron.
+
+1076
+01:13:56,300 --> 01:14:00,420
+ This neuron will look at these input vectors.
+
+1077
+01:14:00,420 --> 01:14:04,340
+ And as you remember from Micrograd, these neurons basically perform a very simple function
+
+1078
+01:14:04,340 --> 01:14:09,820
+ WX plus B, where WX is a dot product.
+
+1079
+01:14:09,820 --> 01:14:12,320
+ So we can achieve the same thing here.
+
+1080
+01:14:12,320 --> 01:14:15,100
+ Let's first define the weights of this neuron, basically.
+
+1081
+01:14:15,100 --> 01:14:19,100
+ Where are the initial weights at initialization for this neuron?
+
+1082
+01:14:19,100 --> 01:14:21,920
+ Let's initialize them with torch dot random.
+
+1083
+01:14:21,920 --> 01:14:29,540
+ Torch dot random fills a tensor with random numbers, drawn from a normal distribution.
+
+1084
+01:14:29,540 --> 01:14:34,660
+ And a normal distribution has a probability density function like this.
+
+1085
+01:14:34,660 --> 01:14:39,620
+ And so most of the numbers drawn from this distribution will be around zero, but some
+
+1086
+01:14:39,620 --> 01:14:42,160
+ of them will be as high as almost three and so on.
+
+1087
+01:14:42,160 --> 01:14:46,560
+ And very few numbers will be above three in magnitude.
+
+1088
+01:14:46,560 --> 01:14:50,720
+ So we need to take size as an input here.
+
+1089
+01:14:50,720 --> 01:14:54,840
+ And I'm going to use size as to be 27 by one.
+
+1090
+01:14:54,840 --> 01:14:58,800
+ So 27 by one, and then let's visualize W.
+
+1091
+01:14:58,800 --> 01:15:03,400
+ So W is a column vector of 27 numbers.
+
+1092
+01:15:03,400 --> 01:15:08,880
+ And these weights are then multiplied by the inputs.
+
+1093
+01:15:08,880 --> 01:15:13,680
+ So now to perform this multiplication, we can take X encoding and we can multiply it
+
+1094
+01:15:13,680 --> 01:15:15,260
+ with W.
+
+1095
+01:15:15,260 --> 01:15:20,220
+ This is a matrix multiplication operator in PyTorch.
+
+1096
+01:15:20,220 --> 01:15:23,900
+ And the output of this operation is five by one.
+
+1097
+01:15:23,900 --> 01:15:26,100
+ The reason it's five by five is the following.
+
+1098
+01:15:26,100 --> 01:15:33,860
+ We took X encoding, which is five by 27, and we multiplied it by 27 by one.
+
+1099
+01:15:33,860 --> 01:15:40,180
+ And in matrix multiplication, you see that the output will become five by one, because
+
+1100
+01:15:40,180 --> 01:15:45,100
+ these 27 will multiply and add.
+
+1101
+01:15:45,100 --> 01:15:52,220
+ So basically what we're seeing here out of this operation is we are seeing the five
+
+1102
+01:15:52,220 --> 01:15:58,500
+ activations of this neuron on these five inputs.
+
+1103
+01:15:58,500 --> 01:16:00,740
+ And we've evaluated all of them in parallel.
+
+1104
+01:16:00,740 --> 01:16:03,640
+ We didn't feed in just a single input to the single neuron.
+
+1105
+01:16:03,640 --> 01:16:08,380
+ We fed in simultaneously all the five inputs into the same neuron.
+
+1106
+01:16:08,380 --> 01:16:14,660
+ And in parallel, PyTorch has evaluated the WX plus B, but here it's just WX, there's
+
+1107
+01:16:14,660 --> 01:16:15,660
+ no bias.
+
+1108
+01:16:15,660 --> 01:16:20,820
+ It has valued W times X for all of them independently.
+
+1109
+01:16:20,820 --> 01:16:24,300
+ Now instead of a single neuron though, I would like to have 27 neurons.
+
+1110
+01:16:24,300 --> 01:16:27,820
+ And I'll show you in a second why I want 27 neurons.
+
+1111
+01:16:27,820 --> 01:16:31,580
+ So instead of having just a one here, which is indicating this presence of one single
+
+1112
+01:16:31,580 --> 01:16:33,620
+ neuron, we can use 27.
+
+1113
+01:16:33,620 --> 01:16:43,720
+ And then when W is 27 by 27, this will in parallel evaluate all the 27 neurons on all
+
+1114
+01:16:43,720 --> 01:16:49,760
+ the five inputs, giving us a much bigger result.
+
+1115
+01:16:49,760 --> 01:16:55,840
+ So now what we've done is five by 27 multiplied, 27 by 27, and the output of this is now five
+
+1116
+01:16:55,840 --> 01:16:58,000
+ by 27.
+
+1117
+01:16:58,000 --> 01:17:04,120
+ So we can see that the shape of this is five by 27.
+
+1118
+01:17:04,120 --> 01:17:07,400
+ So what is every element here telling us?
+
+1119
+01:17:07,400 --> 01:17:15,200
+ It's telling us for every one of 27 neurons that we created, what is the firing rate of
+
+1120
+01:17:15,200 --> 01:17:19,840
+ those neurons on every one of those five examples?
+
+1121
+01:17:19,840 --> 01:17:29,680
+ So the element, for example, 3,13 is giving us the firing rate of the 13th neuron looking
+
+1122
+01:17:29,680 --> 01:17:32,200
+ at the third input.
+
+1123
+01:17:32,200 --> 01:17:40,240
+ And the way this was achieved is by a dot product between the third input and the 13th
+
+1124
+01:17:40,240 --> 01:17:45,840
+ column of this W matrix here.
+
+1125
+01:17:45,840 --> 01:17:52,040
+ So using matrix multiplication, we can very efficiently evaluate the dot product between
+
+1126
+01:17:52,040 --> 01:17:58,120
+ lots of input examples in a batch and lots of neurons where all of those neurons have
+
+1127
+01:17:58,120 --> 01:18:01,360
+ weights in the columns of those Ws.
+
+1128
+01:18:01,360 --> 01:18:05,760
+ And in matrix multiplication, we're just doing those dot products in parallel.
+
+1129
+01:18:05,760 --> 01:18:10,960
+ Just to show you that this is the case, we can take X and we can take the third row.
+
+1130
+01:18:10,960 --> 01:18:17,640
+ And we can take the W and take its 13th column.
+
+1131
+01:18:17,640 --> 01:18:28,040
+ And then we can do X and get three element-wise multiply with W at 13 and sum that up.
+
+1132
+01:18:28,040 --> 01:18:33,120
+ This Wx plus B. Well, there's no plus B. It's just Wx dot product.
+
+1133
+01:18:33,120 --> 01:18:35,040
+ And that's this number.
+
+1134
+01:18:35,040 --> 01:18:40,760
+ So you see that this is just being done efficiently by the matrix multiplication operation for
+
+1135
+01:18:40,760 --> 01:18:45,840
+ all the input examples and for all the output neurons of this first layer.
+
+1136
+01:18:45,840 --> 01:18:51,440
+ Okay, so we fed our 27 dimensional inputs into a first layer of a neural net that has
+
+1137
+01:18:51,440 --> 01:18:53,040
+ 27 neurons, right?
+
+1138
+01:18:53,040 --> 01:18:57,240
+ So we have 27 inputs and now we have 27 neurons.
+
+1139
+01:18:57,240 --> 01:19:02,320
+ These neurons perform W times X. They don't have a bias and they don't have a nonlinearity
+
+1140
+01:19:02,320 --> 01:19:03,320
+ like 10H.
+
+1141
+01:19:03,320 --> 01:19:06,760
+ We're going to leave them to be a linear layer.
+
+1142
+01:19:06,760 --> 01:19:09,280
+ In addition to that, we're not going to have any other layers.
+
+1143
+01:19:09,280 --> 01:19:10,280
+ This is going to be it.
+
+1144
+01:19:10,280 --> 01:19:14,440
+ This is just going to be the dumbest, smallest, simplest neural net, which is just a single
+
+1145
+01:19:14,440 --> 01:19:16,720
+ linear layer.
+
+1146
+01:19:16,720 --> 01:19:21,000
+ And now I'd like to explain what I want those 27 outputs to be.
+
+1147
+01:19:21,000 --> 01:19:24,920
+ Intuitively, what we're trying to produce here for every single input example is we're
+
+1148
+01:19:24,920 --> 01:19:29,640
+ trying to produce some kind of a probability distribution for the next character in a sequence.
+
+1149
+01:19:29,640 --> 01:19:31,800
+ And there's 27 of them.
+
+1150
+01:19:31,800 --> 01:19:35,880
+ But we have to come up with like precise semantics for exactly how we're going to interpret
+
+1151
+01:19:35,880 --> 01:19:39,880
+ these 27 numbers that these neurons take on.
+
+1152
+01:19:39,880 --> 01:19:44,480
+ Now intuitively, you see here that these numbers are negative and some of them are positive,
+
+1153
+01:19:44,480 --> 01:19:45,480
+ et cetera.
+
+1154
+01:19:45,480 --> 01:19:51,600
+ And that's because these are coming out of a neural net layer initialized with these
+
+1155
+01:19:51,600 --> 01:19:53,600
+ normal distribution parameters.
+
+1156
+01:19:53,600 --> 01:19:59,880
+ But what we want is we want something like we had here, like each row here told us the
+
+1157
+01:19:59,880 --> 01:20:03,760
+ counts and then we normalize the counts to get probabilities.
+
+1158
+01:20:03,760 --> 01:20:06,720
+ And we want something similar to come out of a neural net.
+
+1159
+01:20:06,720 --> 01:20:10,760
+ But what we just have right now is just some negative and positive numbers.
+
+1160
+01:20:10,760 --> 01:20:15,600
+ Now we want those numbers to somehow represent the probabilities for the next character.
+
+1161
+01:20:15,600 --> 01:20:18,920
+ But you see that probabilities, they have a special structure.
+
+1162
+01:20:18,920 --> 01:20:23,120
+ They're positive numbers and they sum to one.
+
+1163
+01:20:23,120 --> 01:20:26,040
+ And so that doesn't just come out of a neural net.
+
+1164
+01:20:26,040 --> 01:20:33,000
+ And then they can't be counts because these counts are positive and counts are integers.
+
+1165
+01:20:33,000 --> 01:20:36,960
+ So counts are also not really a good thing to output from a neural net.
+
+1166
+01:20:36,960 --> 01:20:42,360
+ So instead what the neural net is going to output and how we are going to interpret the
+
+1167
+01:20:42,360 --> 01:20:50,680
+ 27 numbers is that these 27 numbers are giving us log counts basically.
+
+1168
+01:20:50,680 --> 01:20:56,320
+ So instead of giving us counts directly, lock in this table, they're giving us log counts.
+
+1169
+01:20:56,320 --> 01:21:00,240
+ And to get the counts, we're going to take the log counts and we're going to exponentiate
+
+1170
+01:21:00,240 --> 01:21:01,600
+ them.
+
+1171
+01:21:01,600 --> 01:21:07,400
+ Now exponentiation takes the following form.
+
+1172
+01:21:07,400 --> 01:21:11,160
+ It takes numbers that are negative or they are positive.
+
+1173
+01:21:11,160 --> 01:21:13,160
+ It takes the entire real line.
+
+1174
+01:21:13,160 --> 01:21:18,880
+ And then if you plug in negative numbers, you're going to get e to the x, which is always
+
+1175
+01:21:18,880 --> 01:21:20,880
+ below one.
+
+1176
+01:21:20,880 --> 01:21:23,760
+ So you're getting numbers lower than one.
+
+1177
+01:21:23,760 --> 01:21:28,560
+ And if you plug in numbers greater than zero, you're getting numbers greater than one, all
+
+1178
+01:21:28,560 --> 01:21:31,120
+ the way growing to the infinity.
+
+1179
+01:21:31,120 --> 01:21:33,520
+ And this here grows to zero.
+
+1180
+01:21:33,520 --> 01:21:40,760
+ So basically we're going to take these numbers here.
+
+1181
+01:21:40,760 --> 01:21:46,960
+ And instead of them being positive and negative and all over the place, we're going to interpret
+
+1182
+01:21:46,960 --> 01:21:49,040
+ them as log counts.
+
+1183
+01:21:49,040 --> 01:21:53,600
+ And then we're going to element wise exponentiate these numbers.
+
+1184
+01:21:53,600 --> 01:21:56,680
+ Exponentiating them now gives us something like this.
+
+1185
+01:21:56,680 --> 01:21:59,560
+ And you see that these numbers now because of that they went through an exponent, all
+
+1186
+01:21:59,560 --> 01:22:04,520
+ the negative numbers turned into numbers below one, like 0.338.
+
+1187
+01:22:04,520 --> 01:22:08,840
+ And all the positive numbers originally turned into even more positive numbers, so we're
+
+1188
+01:22:08,840 --> 01:22:11,040
+ greater than one.
+
+1189
+01:22:11,040 --> 01:22:21,360
+ So like for example, seven is some positive number over here that is greater than zero.
+
+1190
+01:22:21,360 --> 01:22:27,880
+ But exponentiated outputs here basically give us something that we can use and interpret
+
+1191
+01:22:27,880 --> 01:22:31,200
+ as the equivalent of counts originally.
+
+1192
+01:22:31,200 --> 01:22:36,600
+ So you see these counts here, one twelve, seven, fifty one, one, etc.
+
+1193
+01:22:36,600 --> 01:22:41,920
+ The neural at this kind of now predicting counts.
+
+1194
+01:22:41,920 --> 01:22:44,120
+ And these counts are positive numbers.
+
+1195
+01:22:44,120 --> 01:22:47,120
+ They can never be below zero, so that makes sense.
+
+1196
+01:22:47,120 --> 01:22:54,480
+ And they can now take on various values depending on the settings of W.
+
+1197
+01:22:54,480 --> 01:22:56,440
+ So let me break this down.
+
+1198
+01:22:56,440 --> 01:23:01,440
+ We're going to interpret these to be the log counts.
+
+1199
+01:23:01,440 --> 01:23:05,440
+ In other words for this, that is often used is so called logits.
+
+1200
+01:23:05,440 --> 01:23:08,840
+ These are logits log counts.
+
+1201
+01:23:08,840 --> 01:23:11,680
+ Then these will be sort of the counts.
+
+1202
+01:23:11,680 --> 01:23:13,720
+ Logits exponentiated.
+
+1203
+01:23:13,720 --> 01:23:20,160
+ And this is equivalent to the n matrix, sort of the n array that we used previously.
+
+1204
+01:23:20,160 --> 01:23:21,880
+ Remember this was the n?
+
+1205
+01:23:21,880 --> 01:23:24,320
+ This is the array of counts.
+
+1206
+01:23:24,320 --> 01:23:32,960
+ And each row here are the counts for the next character.
+
+1207
+01:23:32,960 --> 01:23:34,600
+ So those are the counts.
+
+1208
+01:23:34,600 --> 01:23:39,960
+ And now the probabilities are just the counts normalized.
+
+1209
+01:23:39,960 --> 01:23:45,120
+ And so I'm not going to find the same, but basically I'm not going to scroll all the
+
+1210
+01:23:45,120 --> 01:23:47,680
+ place we've already done this.
+
+1211
+01:23:47,680 --> 01:23:54,280
+ We want to counts that sum along the first dimension and we want to keep them as true.
+
+1212
+01:23:54,280 --> 01:24:01,720
+ We've went over this and this is how we normalize the rows of our counts matrix to get our probabilities.
+
+1213
+01:24:01,720 --> 01:24:08,320
+ So now these are the probabilities.
+
+1214
+01:24:08,320 --> 01:24:10,920
+ And these are the counts that we have currently.
+
+1215
+01:24:10,920 --> 01:24:19,920
+ And now when I show the probabilities, you see that every row here, of course, will sum
+
+1216
+01:24:19,920 --> 01:24:23,400
+ to one because they're normalized.
+
+1217
+01:24:23,400 --> 01:24:27,680
+ And the shape of this is 5 by 27.
+
+1218
+01:24:27,680 --> 01:24:32,440
+ And so really what we've achieved is for every one of our five examples, we now have
+
+1219
+01:24:32,440 --> 01:24:35,440
+ a row that came out of a neural net.
+
+1220
+01:24:35,440 --> 01:24:39,560
+ And because of the transformations here, we made sure that this output of this neural
+
+1221
+01:24:39,560 --> 01:24:44,280
+ net now are probabilities or we can interpret to be probabilities.
+
+1222
+01:24:44,280 --> 01:24:50,960
+ So our WX here gave us logits and then we interpret those to be log counts.
+
+1223
+01:24:50,960 --> 01:24:54,280
+ We exponentiate to get something that looks like counts.
+
+1224
+01:24:54,280 --> 01:24:57,760
+ And then we normalize those counts to get a probability distribution.
+
+1225
+01:24:57,760 --> 01:25:00,640
+ And all of these are differentiable operations.
+
+1226
+01:25:00,640 --> 01:25:03,480
+ So what we've done now is we are taking inputs.
+
+1227
+01:25:03,480 --> 01:25:07,640
+ We have differentiable operations that we can back propagate through and we're getting
+
+1228
+01:25:07,640 --> 01:25:10,120
+ out probability distributions.
+
+1229
+01:25:10,120 --> 01:25:18,360
+ So for example, for the 0th example that fed in, right, which was the 0th example here
+
+1230
+01:25:18,360 --> 01:25:20,920
+ was a one-hot vector of 0.
+
+1231
+01:25:20,920 --> 01:25:28,040
+ And it basically corresponded to feeding in this example here.
+
+1232
+01:25:28,040 --> 01:25:30,640
+ So we're feeding in a dot into a neural net.
+
+1233
+01:25:30,640 --> 01:25:34,640
+ And the way we fed the dot into a neural net is that we first got its index.
+
+1234
+01:25:34,640 --> 01:25:36,880
+ Then we one-hot encoded it.
+
+1235
+01:25:36,880 --> 01:25:43,680
+ Then it went into the neural net and out came this distribution of probabilities.
+
+1236
+01:25:43,680 --> 01:25:47,440
+ And its shape is 27.
+
+1237
+01:25:47,440 --> 01:25:48,960
+ There's 27 numbers.
+
+1238
+01:25:48,960 --> 01:25:54,320
+ And we're going to interpret this as the neural net's assignment for how likely every
+
+1239
+01:25:54,320 --> 01:26:00,040
+ one of these characters, the 27 characters, are to come next.
+
+1240
+01:26:00,040 --> 01:26:04,480
+ And as we tune the weights W, we're going to be, of course, getting different probabilities
+
+1241
+01:26:04,480 --> 01:26:07,480
+ out for any character that you input.
+
+1242
+01:26:07,480 --> 01:26:12,200
+ And so now the question is just, can we optimize and find a good W such that the probabilities
+
+1243
+01:26:12,200 --> 01:26:14,760
+ coming out are pretty good.
+
+1244
+01:26:14,760 --> 01:26:17,040
+ And the way we measure pretty good is by the loss function.
+
+1245
+01:26:17,040 --> 01:26:20,760
+ Okay, so I organized everything into a single summary so that hopefully it's a bit more
+
+1246
+01:26:20,760 --> 01:26:21,760
+ clear.
+
+1247
+01:26:21,760 --> 01:26:22,760
+ So it starts here.
+
+1248
+01:26:22,760 --> 01:26:26,640
+ With an input data set, we have some input stood in the neural net.
+
+1249
+01:26:26,640 --> 01:26:30,720
+ And we have some labels for the correct next character in a sequence.
+
+1250
+01:26:30,720 --> 01:26:33,040
+ These are integers.
+
+1251
+01:26:33,040 --> 01:26:38,840
+ Here I'm using a torsus generators now so that you see the same numbers that I see.
+
+1252
+01:26:38,840 --> 01:26:48,880
+ And I'm generating 27 neurons weights and each neuron here receives 27 inputs.
+
+1253
+01:26:48,880 --> 01:26:52,840
+ Then here we're going to plug in all the input examples, Xs, into a neural net.
+
+1254
+01:26:52,840 --> 01:26:56,120
+ So here this is a forward pass.
+
+1255
+01:26:56,120 --> 01:27:00,680
+ First we have to encode all of the inputs into one-half representations.
+
+1256
+01:27:00,680 --> 01:27:01,880
+ So we have 27 classes.
+
+1257
+01:27:01,880 --> 01:27:10,120
+ We pass in these integers and X ink becomes a array that is 5 by 27.
+
+1258
+01:27:10,120 --> 01:27:12,520
+ Zeros, except for a few ones.
+
+1259
+01:27:12,520 --> 01:27:17,520
+ We then multiply this in the first layer of a neural net to get loyates, exponentiate
+
+1260
+01:27:17,520 --> 01:27:24,560
+ the logits to get fake counts sort of, and normalize these counts to get probabilities.
+
+1261
+01:27:24,560 --> 01:27:31,560
+ So these last two lines by the way here are called the softmax, which I pulled up here
+
+1262
+01:27:31,560 --> 01:27:37,680
+ and the softmax is a very often used layer in a neural net that takes these z's, which
+
+1263
+01:27:37,680 --> 01:27:43,320
+ are logits, exponentiates them, and divides and normalizes.
+
+1264
+01:27:43,320 --> 01:27:48,600
+ It's a way of taking outputs of a neural net layer and these outputs can be positive or
+
+1265
+01:27:48,600 --> 01:27:52,600
+ negative and it outputs probability distributions.
+
+1266
+01:27:52,600 --> 01:27:58,040
+ It outputs something that is always sums to one in our positive numbers, just like probabilities.
+
+1267
+01:27:58,040 --> 01:28:02,400
+ So it's kind of like a normalization function if you want to think of it that way.
+
+1268
+01:28:02,400 --> 01:28:05,880
+ And you can put it on top of any other linear layer inside a neural net.
+
+1269
+01:28:05,880 --> 01:28:10,800
+ And it basically makes a neural net output probabilities that's very often used and we
+
+1270
+01:28:10,800 --> 01:28:13,640
+ used it as well here.
+
+1271
+01:28:13,640 --> 01:28:18,120
+ So this is the forward pass and that's how we made a neural net output probability.
+
+1272
+01:28:18,120 --> 01:28:27,120
+ Now you'll notice that all of these, this entire forward pass is made up of differentiable
+
+1273
+01:28:27,120 --> 01:28:28,120
+ layers.
+
+1274
+01:28:28,120 --> 01:28:32,040
+ Everything here we can back propagate through and we saw some of the back propagation in
+
+1275
+01:28:32,040 --> 01:28:33,440
+ micrograd.
+
+1276
+01:28:33,440 --> 01:28:36,680
+ This is just multiplication and addition.
+
+1277
+01:28:36,680 --> 01:28:39,800
+ All that's happening here is just multiplying and add and we know how to back propagate
+
+1278
+01:28:39,800 --> 01:28:40,800
+ through them.
+
+1279
+01:28:40,800 --> 01:28:44,120
+ Exponentiation we know how to back propagate through.
+
+1280
+01:28:44,120 --> 01:28:51,160
+ And then here we are summing and sum is as easily back propagated as well and division
+
+1281
+01:28:51,160 --> 01:28:52,160
+ as well.
+
+1282
+01:28:52,160 --> 01:28:57,760
+ So everything here is the differentiable operation and we can back propagate through.
+
+1283
+01:28:57,760 --> 01:29:01,880
+ Now we achieve these probabilities which are 5 by 27.
+
+1284
+01:29:01,880 --> 01:29:06,560
+ For every single example we have a vector of probabilities that's under one.
+
+1285
+01:29:06,560 --> 01:29:11,680
+ And then here I wrote a bunch of stuff to sort of like break down the examples.
+
+1286
+01:29:11,680 --> 01:29:16,640
+ So we have five examples making up Emma, right?
+
+1287
+01:29:16,640 --> 01:29:20,240
+ And there are five by grams inside Emma.
+
+1288
+01:29:20,240 --> 01:29:26,640
+ So by gram example, by gram example one is that E is the beginning character right after
+
+1289
+01:29:26,640 --> 01:29:28,640
+ dot.
+
+1290
+01:29:28,640 --> 01:29:31,560
+ And the indexes for these are 0 and 5.
+
+1291
+01:29:31,560 --> 01:29:36,200
+ So then we feed in a 0 that's the input of the neural net.
+
+1292
+01:29:36,200 --> 01:29:41,560
+ We get probabilities from the neural net that are 27 numbers.
+
+1293
+01:29:41,560 --> 01:29:46,120
+ And then the label is 5 because E actually comes after dot.
+
+1294
+01:29:46,120 --> 01:29:48,160
+ So that's the label.
+
+1295
+01:29:48,160 --> 01:29:54,600
+ And then we use this label 5 to index into the probability distribution here.
+
+1296
+01:29:54,600 --> 01:29:59,880
+ So this index 5 here is 0, 1, 2, 3, 4, 5.
+
+1297
+01:29:59,880 --> 01:30:04,360
+ It's this number here which is here.
+
+1298
+01:30:04,360 --> 01:30:09,000
+ So that's basically the probability assigned by the neural net to the actual correct character.
+
+1299
+01:30:09,000 --> 01:30:13,560
+ You see that the net work currently thinks that this next character that E following dot
+
+1300
+01:30:13,560 --> 01:30:15,600
+ is only 1% likely.
+
+1301
+01:30:15,600 --> 01:30:17,360
+ Which is of course not very good, right?
+
+1302
+01:30:17,360 --> 01:30:20,000
+ Because this actually is a training example.
+
+1303
+01:30:20,000 --> 01:30:22,720
+ And the network thinks that this is currently very, very unlikely.
+
+1304
+01:30:22,720 --> 01:30:27,280
+ But that's just because we didn't get very lucky in generating a good setting of W.
+
+1305
+01:30:27,280 --> 01:30:32,200
+ So right now this network thinks it says unlikely and 0.01 is not a good outcome.
+
+1306
+01:30:32,200 --> 01:30:36,120
+ So the log likelihood then is very negative.
+
+1307
+01:30:36,120 --> 01:30:39,680
+ And the negative log likelihood is very positive.
+
+1308
+01:30:39,680 --> 01:30:43,440
+ And so 4 is a very high negative log likelihood.
+
+1309
+01:30:43,440 --> 01:30:45,640
+ That means we're going to have a high loss.
+
+1310
+01:30:45,640 --> 01:30:47,000
+ Because what is the loss?
+
+1311
+01:30:47,000 --> 01:30:51,880
+ The loss is just the average negative log likelihood.
+
+1312
+01:30:51,880 --> 01:30:53,880
+ So the second character is EM.
+
+1313
+01:30:53,880 --> 01:31:01,760
+ And you see here that also the network thought that M following E is very unlikely, 1%.
+
+1314
+01:31:01,760 --> 01:31:04,520
+ For M following M it thought it was 2%.
+
+1315
+01:31:04,520 --> 01:31:08,040
+ And for A following M it actually thought it was 7% likely.
+
+1316
+01:31:08,040 --> 01:31:12,160
+ So just by chance this one actually has a pretty good probability.
+
+1317
+01:31:12,160 --> 01:31:15,600
+ And therefore a pretty low negative log likelihood.
+
+1318
+01:31:15,600 --> 01:31:18,600
+ And finally here it thought this was 1% likely.
+
+1319
+01:31:18,600 --> 01:31:22,560
+ So overall our average negative log likelihood which is the loss.
+
+1320
+01:31:22,560 --> 01:31:27,760
+ The total loss that summarizes basically how well this network currently works, at least
+
+1321
+01:31:27,760 --> 01:31:32,000
+ on this one word, not on the full data set just the one word, is 3.76.
+
+1322
+01:31:32,000 --> 01:31:34,360
+ Which is actually very high loss.
+
+1323
+01:31:34,360 --> 01:31:36,320
+ This is not a very good setting of W's.
+
+1324
+01:31:36,320 --> 01:31:38,840
+ Now here's what we can do.
+
+1325
+01:31:38,840 --> 01:31:41,480
+ We're currently getting 3.76.
+
+1326
+01:31:41,480 --> 01:31:44,400
+ We can actually come here and we can change our W.
+
+1327
+01:31:44,400 --> 01:31:45,840
+ We can resample it.
+
+1328
+01:31:45,840 --> 01:31:48,960
+ So let me just add one to have a different seed.
+
+1329
+01:31:48,960 --> 01:31:50,800
+ And then we get a different W.
+
+1330
+01:31:50,800 --> 01:31:53,080
+ And then we can rerun this.
+
+1331
+01:31:53,080 --> 01:31:58,800
+ And with this different setting of W's we now get 3.37.
+
+1332
+01:31:58,800 --> 01:32:00,920
+ So this is a much better W, right?
+
+1333
+01:32:00,920 --> 01:32:06,880
+ And it's better because the probabilities just happen to come out higher for the characters
+
+1334
+01:32:06,880 --> 01:32:09,120
+ that actually are next.
+
+1335
+01:32:09,120 --> 01:32:14,560
+ And so you can imagine actually just resampling this, you know, we can try the two.
+
+1336
+01:32:14,560 --> 01:32:17,480
+ So okay, this was not very good.
+
+1337
+01:32:17,480 --> 01:32:18,760
+ Let's try one more.
+
+1338
+01:32:18,760 --> 01:32:20,160
+ We can try three.
+
+1339
+01:32:20,160 --> 01:32:24,960
+ Okay, this was terrible setting because we have a very high loss.
+
+1340
+01:32:24,960 --> 01:32:30,240
+ So anyway, I'm going to erase this.
+
+1341
+01:32:30,240 --> 01:32:33,720
+ What I'm doing here, which is just guess and check of randomly assigning parameters and
+
+1342
+01:32:33,720 --> 01:32:37,480
+ seeing if the network is good, that is amateur hour.
+
+1343
+01:32:37,480 --> 01:32:39,320
+ That's not how you optimize a neural net.
+
+1344
+01:32:39,320 --> 01:32:42,760
+ The way you optimize a neural net is you start with some random guess and we're going to
+
+1345
+01:32:42,760 --> 01:32:45,400
+ commit to this one, even though it's not very good.
+
+1346
+01:32:45,400 --> 01:32:48,520
+ But now the big deal is we have a loss function.
+
+1347
+01:32:48,520 --> 01:32:54,520
+ So this loss is made up only of differentiable operations.
+
+1348
+01:32:54,520 --> 01:33:01,480
+ And we can minimize the loss by tuning W's by computing the gradients of the loss with
+
+1349
+01:33:01,480 --> 01:33:05,320
+ respect to these W matrices.
+
+1350
+01:33:05,320 --> 01:33:10,360
+ And so then we can tune W to minimize the loss and find a good setting of W using gradient
+
+1351
+01:33:10,360 --> 01:33:11,880
+ based optimization.
+
+1352
+01:33:11,880 --> 01:33:13,240
+ So let's see how that will work.
+
+1353
+01:33:13,240 --> 01:33:17,320
+ Now things are actually going to look almost identical to what we had with micrograd.
+
+1354
+01:33:17,320 --> 01:33:22,280
+ So here I pulled up the lecture from micrograd, the notebook.
+
+1355
+01:33:22,280 --> 01:33:23,280
+ It's from this repository.
+
+1356
+01:33:23,280 --> 01:33:27,200
+ And when I scroll all the way to the end where we left off with micrograd, we had something
+
+1357
+01:33:27,200 --> 01:33:28,760
+ very, very similar.
+
+1358
+01:33:28,760 --> 01:33:31,040
+ We had a number of input examples.
+
+1359
+01:33:31,040 --> 01:33:37,920
+ In this case, we had four input examples inside Xs and we had their targets, desired targets.
+
+1360
+01:33:37,920 --> 01:33:42,220
+ Just like here, we have our Xs now, but we have five of them and they're now integers
+
+1361
+01:33:42,220 --> 01:33:44,360
+ instead of vectors.
+
+1362
+01:33:44,360 --> 01:33:49,400
+ But we're going to convert our integers to vectors, except our vectors will be 27 large
+
+1363
+01:33:49,400 --> 01:33:52,280
+ instead of three large.
+
+1364
+01:33:52,280 --> 01:33:56,320
+ And then here what we did is first we did a forward pass where we ran a neural net on
+
+1365
+01:33:56,320 --> 01:34:00,520
+ all the inputs to get predictions.
+
+1366
+01:34:00,520 --> 01:34:05,360
+ Our neural net at the time, this n of X was a multilayer perceptron.
+
+1367
+01:34:05,360 --> 01:34:10,760
+ Our neural net is going to look different because our neural net is just a single layer,
+
+1368
+01:34:10,760 --> 01:34:14,080
+ single linear layer, followed by a softmax.
+
+1369
+01:34:14,080 --> 01:34:16,120
+ So that's our neural net.
+
+1370
+01:34:16,120 --> 01:34:18,600
+ And the loss here was the mean squared error.
+
+1371
+01:34:18,600 --> 01:34:22,160
+ So we simply subtracted the prediction from the ground truth and squared it and summed
+
+1372
+01:34:22,160 --> 01:34:23,160
+ it all up.
+
+1373
+01:34:23,160 --> 01:34:24,400
+ And that was the loss.
+
+1374
+01:34:24,400 --> 01:34:28,720
+ And loss was the single number that summarized the quality of the neural net.
+
+1375
+01:34:28,720 --> 01:34:36,440
+ And when loss is low, like almost zero, that means the neural net is predicting correctly.
+
+1376
+01:34:36,440 --> 01:34:42,240
+ So we had a single number that summarized the performance of the neural net.
+
+1377
+01:34:42,240 --> 01:34:47,040
+ And everything here was differentiable and was stored in a massive compute graph.
+
+1378
+01:34:47,040 --> 01:34:49,320
+ And then we iterated over all the parameters.
+
+1379
+01:34:49,320 --> 01:34:51,960
+ We made sure that the gradients are set to zero.
+
+1380
+01:34:51,960 --> 01:34:54,360
+ And we called loss.backward.
+
+1381
+01:34:54,360 --> 01:34:59,640
+ And loss.backward initiated back propagation at the final output node of loss.
+
+1382
+01:34:59,640 --> 01:35:02,320
+ So yeah, I remember these expressions.
+
+1383
+01:35:02,320 --> 01:35:03,720
+ We had loss all the way at the end.
+
+1384
+01:35:03,720 --> 01:35:06,600
+ We start back propagation and we went all the way back.
+
+1385
+01:35:06,600 --> 01:35:11,000
+ And we made sure that we populated all the parameters dot grad.
+
+1386
+01:35:11,000 --> 01:35:14,760
+ So that grad started at zero, but back propagation filled it in.
+
+1387
+01:35:14,760 --> 01:35:17,680
+ And then in the update, we iterated all the parameters.
+
+1388
+01:35:17,680 --> 01:35:23,800
+ And we simply did a parameter update where every single element of our parameters was
+
+1389
+01:35:23,800 --> 01:35:27,840
+ not in the opposite direction of the gradient.
+
+1390
+01:35:27,840 --> 01:35:31,920
+ And so we're going to do the exact same thing here.
+
+1391
+01:35:31,920 --> 01:35:38,720
+ So I'm going to pull this up on the side here.
+
+1392
+01:35:38,720 --> 01:35:40,040
+ So that we have it available.
+
+1393
+01:35:40,040 --> 01:35:42,280
+ And we're actually going to do the exact same thing.
+
+1394
+01:35:42,280 --> 01:35:44,280
+ So this was the forward pass.
+
+1395
+01:35:44,280 --> 01:35:47,120
+ So where we did this.
+
+1396
+01:35:47,120 --> 01:35:49,160
+ And props is our white bread.
+
+1397
+01:35:49,160 --> 01:35:52,600
+ So now we have to evaluate the loss, but we're not using the mean squared error.
+
+1398
+01:35:52,600 --> 01:35:55,800
+ We're using the negative log likelihood because we are doing classification.
+
+1399
+01:35:55,800 --> 01:35:59,240
+ We're not doing regression as it's called.
+
+1400
+01:35:59,240 --> 01:36:02,640
+ So here we want to calculate loss.
+
+1401
+01:36:02,640 --> 01:36:07,400
+ Now the way we calculate it is just this average negative log likelihood.
+
+1402
+01:36:07,400 --> 01:36:13,680
+ Now this props here has a shape of five by 27.
+
+1403
+01:36:13,680 --> 01:36:18,760
+ And so to get all that we basically want to pluck out the probabilities at the correct
+
+1404
+01:36:18,760 --> 01:36:20,280
+ indices here.
+
+1405
+01:36:20,280 --> 01:36:25,160
+ So in particular, because the labels are stored here in the array wise, basically what we're
+
+1406
+01:36:25,160 --> 01:36:30,040
+ after is for the first example, we're looking at probability of five, right, at the index
+
+1407
+01:36:30,040 --> 01:36:31,120
+ five.
+
+1408
+01:36:31,120 --> 01:36:37,440
+ For the second example at the second row or row index one, we are interested in the probability
+
+1409
+01:36:37,440 --> 01:36:40,520
+ assigned to index 13.
+
+1410
+01:36:40,520 --> 01:36:43,640
+ At the second example, we also have 13.
+
+1411
+01:36:43,640 --> 01:36:51,480
+ At the third row, we want one and at the last row, which is four, we want zero.
+
+1412
+01:36:51,480 --> 01:36:54,280
+ So these are the probabilities we're interested in, right?
+
+1413
+01:36:54,280 --> 01:36:58,880
+ And you can see that they're not amazing as we saw above.
+
+1414
+01:36:58,880 --> 01:37:02,620
+ So these are the probabilities we want, but we want like a more efficient way to access
+
+1415
+01:37:02,620 --> 01:37:07,280
+ these probabilities, not just listing them out in a tuple like this.
+
+1416
+01:37:07,280 --> 01:37:11,320
+ So it turns out that the way to do this in PyTorch, one of the ways at least, is we can
+
+1417
+01:37:11,320 --> 01:37:22,280
+ basically pass in all of these integers in a vectors.
+
+1418
+01:37:22,280 --> 01:37:28,440
+ So these ones, you see how they're just 0, 1, 2, 3, 4, we can actually create that using
+
+1419
+01:37:28,440 --> 01:37:34,640
+ MP, not MP, sorry, torch dot arrange of five, 0, 1, 2, 3, 4.
+
+1420
+01:37:34,640 --> 01:37:40,400
+ So we can index here with torch dot arrange of five, and here we index with wise.
+
+1421
+01:37:40,400 --> 01:37:49,240
+ And you see that that gives us exactly these numbers.
+
+1422
+01:37:49,240 --> 01:37:54,680
+ So that plucks out the probabilities of that the neural network assigns to the correct
+
+1423
+01:37:54,680 --> 01:37:56,480
+ next character.
+
+1424
+01:37:56,480 --> 01:38:00,760
+ Now we take those probabilities and we don't, we actually look at the log probability.
+
+1425
+01:38:00,760 --> 01:38:03,760
+ So we want to download.
+
+1426
+01:38:03,760 --> 01:38:06,880
+ And then we want to just average that up.
+
+1427
+01:38:06,880 --> 01:38:08,800
+ So take the mean of all that.
+
+1428
+01:38:08,800 --> 01:38:14,440
+ And then it's the negative average log likelihood that is the loss.
+
+1429
+01:38:14,440 --> 01:38:17,760
+ So the loss here is 3.7 something.
+
+1430
+01:38:17,760 --> 01:38:23,720
+ And you see that this loss 3.76, 3.76 is exactly as we've obtained before, but this
+
+1431
+01:38:23,720 --> 01:38:26,680
+ is a vectorized form of that expression.
+
+1432
+01:38:26,680 --> 01:38:29,760
+ So we get the same loss.
+
+1433
+01:38:29,760 --> 01:38:34,920
+ And the same loss we can consider sort of as part of this forward pass and we've achieved
+
+1434
+01:38:34,920 --> 01:38:36,080
+ here now loss.
+
+1435
+01:38:36,080 --> 01:38:38,480
+ Okay, so we made our way all the way to loss.
+
+1436
+01:38:38,480 --> 01:38:40,320
+ We defined the forward pass.
+
+1437
+01:38:40,320 --> 01:38:42,280
+ We forwarded the network and the loss.
+
+1438
+01:38:42,280 --> 01:38:44,520
+ Now we're ready to do backward pass.
+
+1439
+01:38:44,520 --> 01:38:48,280
+ So backward pass.
+
+1440
+01:38:48,280 --> 01:38:51,200
+ We want to first make sure that all the gradients are reset.
+
+1441
+01:38:51,200 --> 01:38:52,600
+ So they're at zero.
+
+1442
+01:38:52,600 --> 01:38:57,400
+ Now in pie torch, you can set the gradients to be zero, but you can also just set it to
+
+1443
+01:38:57,400 --> 01:39:03,000
+ none and setting it to none is more efficient and pie torch will interpret none as like
+
+1444
+01:39:03,000 --> 01:39:06,000
+ a lack of a gradient and it's the same as zeros.
+
+1445
+01:39:06,000 --> 01:39:10,720
+ So this is a way to set to zero, the gradient.
+
+1446
+01:39:10,720 --> 01:39:14,960
+ And now we do loss.backward.
+
+1447
+01:39:14,960 --> 01:39:17,120
+ Before we do loss.backward, we need one more thing.
+
+1448
+01:39:17,120 --> 01:39:22,800
+ If you remember from micro grad, pie torch actually requires that we pass in requires
+
+1449
+01:39:22,800 --> 01:39:25,360
+ grad is true.
+
+1450
+01:39:25,360 --> 01:39:31,440
+ So that we tell pie torch that we are interested in calculating gradients for this leaf tensor
+
+1451
+01:39:31,440 --> 01:39:32,280
+ by default.
+
+1452
+01:39:32,280 --> 01:39:33,720
+ This is false.
+
+1453
+01:39:33,720 --> 01:39:40,920
+ So let me recalculate with that and then setting none and loss.backward.
+
+1454
+01:39:40,920 --> 01:39:47,280
+ Now something magical happened when loss.backward was run because pie torch just like micro grad,
+
+1455
+01:39:47,280 --> 01:39:52,520
+ when we did the forward pass here, it keeps track of all the operations under the hood.
+
+1456
+01:39:52,520 --> 01:39:55,080
+ It builds a full computational graph.
+
+1457
+01:39:55,080 --> 01:40:01,000
+ Just like the graphs we produced in micro grad, those graphs exist inside pie torch.
+
+1458
+01:40:01,000 --> 01:40:05,240
+ And so it knows all the dependencies and all the mathematical operations of everything.
+
+1459
+01:40:05,240 --> 01:40:09,840
+ And when you then calculate the loss, we can call a dot backward on it.
+
+1460
+01:40:09,840 --> 01:40:16,440
+ And that backward then fills in the gradients of all the intermediates all the way back to
+
+1461
+01:40:16,440 --> 01:40:20,160
+ W's, which are the parameters of our neural net.
+
+1462
+01:40:20,160 --> 01:40:24,120
+ So now we can do W dot grad and we see that it has structure.
+
+1463
+01:40:24,120 --> 01:40:29,400
+ There's stuff inside it.
+
+1464
+01:40:29,400 --> 01:40:37,560
+ And these gradients, every single element here, so W dot shape is 27 by 27, W grad's
+
+1465
+01:40:37,560 --> 01:40:40,920
+ shape is the same, 27 by 27.
+
+1466
+01:40:40,920 --> 01:40:47,640
+ And every element of W dot grad is telling us the influence of that weight on the loss
+
+1467
+01:40:47,640 --> 01:40:48,960
+ function.
+
+1468
+01:40:48,960 --> 01:40:54,360
+ So for example, this number all the way here, if this element, the zero, zero element of
+
+1469
+01:40:54,360 --> 01:41:00,440
+ W, because the gradient is positive, it's telling us that this has a positive influence
+
+1470
+01:41:00,440 --> 01:41:09,440
+ on the loss, slightly nudging W slightly taking W zero, zero, and adding a small h to
+
+1471
+01:41:09,440 --> 01:41:15,960
+ it would increase the loss mildly, because this gradient is positive.
+
+1472
+01:41:15,960 --> 01:41:18,840
+ Some of these gradients are also negative.
+
+1473
+01:41:18,840 --> 01:41:21,520
+ So that's telling us about the gradient information.
+
+1474
+01:41:21,520 --> 01:41:26,920
+ And we can use this gradient information to update the weights of this neural network.
+
+1475
+01:41:26,920 --> 01:41:28,520
+ So let's not do the update.
+
+1476
+01:41:28,520 --> 01:41:30,960
+ It's going to be very similar to what we had in micro grad.
+
+1477
+01:41:30,960 --> 01:41:35,960
+ We need no loop over all the parameters, because we only have one parameter tensor and
+
+1478
+01:41:35,960 --> 01:41:37,320
+ that is W.
+
+1479
+01:41:37,320 --> 01:41:44,080
+ So we simply do W dot data plus equals the, we can actually copy this almost exactly,
+
+1480
+01:41:44,080 --> 01:41:49,800
+ negative 0.1 times W dot grad.
+
+1481
+01:41:49,800 --> 01:41:54,760
+ And that will be the update to the tensor.
+
+1482
+01:41:54,760 --> 01:41:59,120
+ So that updates the tensor.
+
+1483
+01:41:59,120 --> 01:42:04,560
+ And because the tensor is updated, we would expect that now the loss should decrease.
+
+1484
+01:42:04,560 --> 01:42:13,360
+ So here, if I print loss that item, it was 3.76, right?
+
+1485
+01:42:13,360 --> 01:42:16,200
+ So we've updated the W here.
+
+1486
+01:42:16,200 --> 01:42:21,640
+ So if I recalculate forward pass, loss now should be slightly lower.
+
+1487
+01:42:21,640 --> 01:42:26,080
+ So 3.76 goes to 3.74.
+
+1488
+01:42:26,080 --> 01:42:32,840
+ And then we can again set to set grad to none and backward update.
+
+1489
+01:42:32,840 --> 01:42:35,120
+ And now the parameters changed again.
+
+1490
+01:42:35,120 --> 01:42:43,120
+ So if we recalculate the forward pass, we expect a lower loss again, 3.72.
+
+1491
+01:42:43,120 --> 01:42:48,800
+ And this is again doing the, we're now doing really in the set.
+
+1492
+01:42:48,800 --> 01:42:53,720
+ And when we achieve a low loss, that will mean that the network is assigning high probabilities
+
+1493
+01:42:53,720 --> 01:42:54,960
+ to the correct next characters.
+
+1494
+01:42:54,960 --> 01:42:59,640
+ Okay, so I rearranged everything and I put it all together from scratch.
+
+1495
+01:42:59,640 --> 01:43:03,480
+ So here is where we construct our data set of by grams.
+
+1496
+01:43:03,480 --> 01:43:07,040
+ You see that we are still iterating only over the first word, Emma.
+
+1497
+01:43:07,040 --> 01:43:09,120
+ I'm going to change that in a second.
+
+1498
+01:43:09,120 --> 01:43:15,000
+ I added a number that counts the number of elements in Xs so that we explicitly see that
+
+1499
+01:43:15,000 --> 01:43:17,280
+ number of examples is 5.
+
+1500
+01:43:17,280 --> 01:43:20,880
+ Because currently we're just working with Emma and there's 5 by grams there.
+
+1501
+01:43:20,880 --> 01:43:23,960
+ And here I added a loop of exactly what we had before.
+
+1502
+01:43:23,960 --> 01:43:28,000
+ So we had 10 iterations of where we need the descent of forward pass, backward pass and
+
+1503
+01:43:28,000 --> 01:43:29,240
+ update.
+
+1504
+01:43:29,240 --> 01:43:35,440
+ And so running these two cells initialization and creating descent gives us some improvement
+
+1505
+01:43:35,440 --> 01:43:38,400
+ on the loss function.
+
+1506
+01:43:38,400 --> 01:43:42,040
+ But now I want to use all the words.
+
+1507
+01:43:42,040 --> 01:43:46,640
+ And there's not five, but 228,000 by grams now.
+
+1508
+01:43:46,640 --> 01:43:49,800
+ However, this should require no modification whatsoever.
+
+1509
+01:43:49,800 --> 01:43:53,200
+ Everything should just run because all the code we wrote doesn't care if there's 5 by
+
+1510
+01:43:53,200 --> 01:43:57,520
+ grams or 228,000 by grams and with everything we should just work.
+
+1511
+01:43:57,520 --> 01:44:00,600
+ So you see that this will just run.
+
+1512
+01:44:00,600 --> 01:44:04,960
+ But now we are optimizing over the entire training set of all the by grams.
+
+1513
+01:44:04,960 --> 01:44:07,760
+ And you see now that we are decreasing very slightly.
+
+1514
+01:44:07,760 --> 01:44:11,080
+ So actually we can probably afford a larger learning rate.
+
+1515
+01:44:11,080 --> 01:44:21,040
+ And probably afford even larger learning rate.
+
+1516
+01:44:21,040 --> 01:44:23,760
+ Even 50 seems to work on this very, very simple example.
+
+1517
+01:44:23,760 --> 01:44:29,560
+ So let me re-inertilize and let's run 100 iterations.
+
+1518
+01:44:29,560 --> 01:44:31,600
+ See what happens.
+
+1519
+01:44:31,600 --> 01:44:36,520
+ Okay.
+
+1520
+01:44:36,520 --> 01:44:41,440
+ We seem to be coming up to some pretty good losses here.
+
+1521
+01:44:41,440 --> 01:44:42,440
+ 2.47.
+
+1522
+01:44:42,440 --> 01:44:44,840
+ Let me run 100 more.
+
+1523
+01:44:44,840 --> 01:44:47,480
+ What is the number that we expect by the way in the loss?
+
+1524
+01:44:47,480 --> 01:44:52,240
+ We expect to get something around what we had originally actually.
+
+1525
+01:44:52,240 --> 01:44:57,560
+ So all the way back, if you remember, in the beginning of this video, when we optimized
+
+1526
+01:44:57,560 --> 01:45:03,800
+ just by counting, our loss was roughly 2.47 after we added smoothing.
+
+1527
+01:45:03,800 --> 01:45:08,640
+ But before smoothing, we had roughly 2.45 likelihood.
+
+1528
+01:45:08,640 --> 01:45:10,000
+ Sorry loss.
+
+1529
+01:45:10,000 --> 01:45:14,040
+ And so that's actually roughly the vicinity of what we expect to achieve.
+
+1530
+01:45:14,040 --> 01:45:19,040
+ But before we achieved it by counting, and here we are achieving roughly the same result,
+
+1531
+01:45:19,040 --> 01:45:21,200
+ but with gradient based optimization.
+
+1532
+01:45:21,200 --> 01:45:26,560
+ So we come to about 2.46, 2.45, etc.
+
+1533
+01:45:26,560 --> 01:45:30,160
+ And that makes sense because fundamentally we're not taking any additional information.
+
+1534
+01:45:30,160 --> 01:45:34,200
+ We're still just taking in the previous character and trying to predict the next one, but instead
+
+1535
+01:45:34,200 --> 01:45:40,040
+ of doing it explicitly by counting and normalizing, we are doing it with gradient based learning.
+
+1536
+01:45:40,040 --> 01:45:45,680
+ And it just so happens that the explicit approach happens to very well optimize the loss function
+
+1537
+01:45:45,680 --> 01:45:50,800
+ without any need for gradient based optimization because the setup for background language models
+
+1538
+01:45:50,800 --> 01:45:53,080
+ is so straightforward, it's so simple.
+
+1539
+01:45:53,080 --> 01:45:59,120
+ We can just afford to estimate those probabilities directly and maintain them in a table.
+
+1540
+01:45:59,120 --> 01:46:03,120
+ But the gradient based approach is significantly more flexible.
+
+1541
+01:46:03,120 --> 01:46:11,040
+ So we've actually gained a lot because what we can do now is we can expand this approach
+
+1542
+01:46:11,040 --> 01:46:13,040
+ and complexify the neural net.
+
+1543
+01:46:13,040 --> 01:46:16,400
+ So currently we're just taking a single character and feeding into a neural net, and the neural
+
+1544
+01:46:16,400 --> 01:46:18,000
+ that's extremely simple.
+
+1545
+01:46:18,000 --> 01:46:20,600
+ But we're about to iterate on this substantially.
+
+1546
+01:46:20,600 --> 01:46:24,960
+ We're going to be taking multiple previous characters, and we're going to be feeding
+
+1547
+01:46:24,960 --> 01:46:29,680
+ them into increasingly more complex neural nets, but fundamentally, the output of the
+
+1548
+01:46:29,680 --> 01:46:32,920
+ neural net will always just be logits.
+
+1549
+01:46:32,920 --> 01:46:35,760
+ And those logits will go through the exact same transformation.
+
+1550
+01:46:35,760 --> 01:46:39,960
+ We're going to take them through a softmax, calculate the loss function, and the negative
+
+1551
+01:46:39,960 --> 01:46:43,840
+ log likelihood, and do gradient based optimization.
+
+1552
+01:46:43,840 --> 01:46:50,040
+ And so actually, as we complexify the neural nets and work all the way up to transformers,
+
+1553
+01:46:50,040 --> 01:46:52,200
+ none of this will really fundamentally change.
+
+1554
+01:46:52,200 --> 01:46:53,840
+ None of this will fundamentally change.
+
+1555
+01:46:53,840 --> 01:46:58,080
+ The only thing that will change is the way we do the forward pass, where we've taken
+
+1556
+01:46:58,080 --> 01:47:03,120
+ some previous characters and calculated logits for the next character in a sequence.
+
+1557
+01:47:03,120 --> 01:47:09,240
+ That will become more complex, and I will use the same machinery to optimize it.
+
+1558
+01:47:09,240 --> 01:47:16,520
+ And it's not obvious how we would have extended this by-gram approach into the case where
+
+1559
+01:47:16,520 --> 01:47:19,480
+ there are many more characters at the input.
+
+1560
+01:47:19,480 --> 01:47:23,160
+ Because eventually these tables would get way too large because there's way too many
+
+1561
+01:47:23,160 --> 01:47:28,040
+ combinations of what previous characters could be.
+
+1562
+01:47:28,040 --> 01:47:31,600
+ If you only have one previous character, we can just keep everything in a table, the
+
+1563
+01:47:31,600 --> 01:47:32,600
+ counts.
+
+1564
+01:47:32,600 --> 01:47:36,360
+ But if you have the last 10 characters that are in, but we can't actually keep everything
+
+1565
+01:47:36,360 --> 01:47:37,600
+ in the table anymore.
+
+1566
+01:47:37,600 --> 01:47:40,040
+ So this is fundamentally an unscalable approach.
+
+1567
+01:47:40,040 --> 01:47:43,360
+ And the neural network approach is significantly more scalable.
+
+1568
+01:47:43,360 --> 01:47:46,440
+ And it's something that actually we can improve on over time.
+
+1569
+01:47:46,440 --> 01:47:48,600
+ So that's where we will be digging next.
+
+1570
+01:47:48,600 --> 01:47:51,400
+ I wanted to point out two more things.
+
+1571
+01:47:51,400 --> 01:47:59,200
+ Number one, I want you to notice that this x-ank here, this is made up of one-hot vectors.
+
+1572
+01:47:59,200 --> 01:48:03,440
+ And then those one-hot vectors are multiplied by this w matrix.
+
+1573
+01:48:03,440 --> 01:48:08,960
+ And we think of this as multiple neurons being forwarded in a fully connected manner.
+
+1574
+01:48:08,960 --> 01:48:14,240
+ But actually what's happening here is that, for example, if you have a one-hot vector here
+
+1575
+01:48:14,240 --> 01:48:19,880
+ that has a one at say the fifth dimension, then because of the way the matrix multiplication
+
+1576
+01:48:19,880 --> 01:48:26,160
+ works, multiplying that one-hot vector with w actually ends up plucking out the fifth row
+
+1577
+01:48:26,160 --> 01:48:27,920
+ of w.
+
+1578
+01:48:27,920 --> 01:48:31,520
+ Lot logits would become just the fifth row of w.
+
+1579
+01:48:31,520 --> 01:48:37,120
+ And that's because of the way the matrix multiplication works.
+
+1580
+01:48:37,120 --> 01:48:40,320
+ So that's actually what ends up happening.
+
+1581
+01:48:40,320 --> 01:48:43,600
+ So but that's actually exactly what happened before.
+
+1582
+01:48:43,600 --> 01:48:49,440
+ Because remember all the way up here, we have a bagram, we took the first character, and
+
+1583
+01:48:49,440 --> 01:48:55,200
+ then that first character indexed into a row of this array here.
+
+1584
+01:48:55,200 --> 01:48:58,880
+ And that row gave us the probability distribution for the next character.
+
+1585
+01:48:58,880 --> 01:49:06,560
+ So the first character was used as a lookup into a matrix here to get the probability distribution.
+
+1586
+01:49:06,560 --> 01:49:08,880
+ Well that's actually exactly what's happening here.
+
+1587
+01:49:08,880 --> 01:49:13,720
+ Because we're taking the index, we're encoding it as one-hot and multiplying it by w.
+
+1588
+01:49:13,720 --> 01:49:21,080
+ So logits literally becomes the appropriate row of w.
+
+1589
+01:49:21,080 --> 01:49:26,040
+ And that gets just as before exponentiated to create the counts and then normalized and
+
+1590
+01:49:26,040 --> 01:49:27,720
+ becomes probability.
+
+1591
+01:49:27,720 --> 01:49:35,400
+ So this w here is literally the same as this array here.
+
+1592
+01:49:35,400 --> 01:49:39,160
+ But w, remember, is the log counts, not the counts.
+
+1593
+01:49:39,160 --> 01:49:46,480
+ So it's more precise to say that w exponentiated w.exp is this array.
+
+1594
+01:49:46,480 --> 01:49:54,160
+ But this array was filled in by counting and by basically populating the counts of bagrams.
+
+1595
+01:49:54,160 --> 01:49:58,280
+ Whereas in the gradient base framework, we initialize it randomly and then we let the
+
+1596
+01:49:58,280 --> 01:50:03,440
+ loss guide us to arrive at the exact same array.
+
+1597
+01:50:03,440 --> 01:50:10,600
+ So this array exactly here is basically the array w at the end of optimization except
+
+1598
+01:50:10,600 --> 01:50:15,280
+ we arrived at it piece by piece by following the loss.
+
+1599
+01:50:15,280 --> 01:50:18,200
+ And that's why we also obtain the same loss function at the end.
+
+1600
+01:50:18,200 --> 01:50:23,880
+ And the second note is if I come here, remember the smoothing where we added fake counts to
+
+1601
+01:50:23,880 --> 01:50:31,320
+ our counts in order to smooth out and make more uniform the distributions of these probabilities.
+
+1602
+01:50:31,320 --> 01:50:37,360
+ That prevented us from assigning zero probability to any one by gram.
+
+1603
+01:50:37,360 --> 01:50:43,960
+ Now if I increase the count here, what's happening to the probability as I increase
+
+1604
+01:50:43,960 --> 01:50:48,480
+ the count, probability becomes more and more uniform, right?
+
+1605
+01:50:48,480 --> 01:50:51,680
+ Because these counts go only up to like 900 or whatever.
+
+1606
+01:50:51,680 --> 01:50:57,280
+ So if I'm adding plus a million to every single number here, you can see how the row
+
+1607
+01:50:57,280 --> 01:51:00,680
+ and its probability then when you divide is just going to become more and more close
+
+1608
+01:51:00,680 --> 01:51:05,400
+ to exactly even probability uniform distribution.
+
+1609
+01:51:05,400 --> 01:51:10,960
+ It turns out that the gradient base framework has an equivalent to smoothing.
+
+1610
+01:51:10,960 --> 01:51:18,760
+ In particular, think through these w's here, which we initialize randomly.
+
+1611
+01:51:18,760 --> 01:51:22,320
+ We could also think about initializing w's to be zero.
+
+1612
+01:51:22,320 --> 01:51:29,080
+ If all the entries of w are zero, then you'll see that logits will become all zero and
+
+1613
+01:51:29,080 --> 01:51:33,920
+ then exponentiating those logits becomes all one and then the probabilities turn out to
+
+1614
+01:51:33,920 --> 01:51:35,960
+ be exactly uniform.
+
+1615
+01:51:35,960 --> 01:51:42,440
+ So basically when w's are all equal to each other or say especially zero, then the probabilities
+
+1616
+01:51:42,440 --> 01:51:44,640
+ come out completely uniform.
+
+1617
+01:51:44,640 --> 01:51:53,120
+ So trying to incentivize w to be near zero is basically equivalent to label smoothing.
+
+1618
+01:51:53,120 --> 01:51:57,480
+ And the more you incentivize that in the loss function, the more smooth distribution you're
+
+1619
+01:51:57,480 --> 01:51:59,120
+ going to achieve.
+
+1620
+01:51:59,120 --> 01:52:03,480
+ So this brings us to something that's called regularization, where we can actually augment
+
+1621
+01:52:03,480 --> 01:52:08,160
+ the loss function to have a small component that we call a regularization loss.
+
+1622
+01:52:08,160 --> 01:52:12,800
+ In particular, what we're going to do is we can take w and we can, for example, square
+
+1623
+01:52:12,800 --> 01:52:20,280
+ all of its entries and then we can, oops, sorry about that, we can take all the entries
+
+1624
+01:52:20,280 --> 01:52:23,880
+ of w and we can sum them.
+
+1625
+01:52:23,880 --> 01:52:28,720
+ And because we're squaring, there will be no signs anymore.
+
+1626
+01:52:28,720 --> 01:52:31,760
+ Natives and positives all get squashed to be positive numbers.
+
+1627
+01:52:31,760 --> 01:52:37,760
+ And then the way this works is you achieve zero loss if w is exactly or zero, but if w
+
+1628
+01:52:37,760 --> 01:52:41,400
+ has nonzero numbers, you accumulate loss.
+
+1629
+01:52:41,400 --> 01:52:45,080
+ And so we can actually take this and we can add it on here.
+
+1630
+01:52:45,080 --> 01:52:53,640
+ So we can do something like loss plus w square dot sum, or let's actually, instead of sum,
+
+1631
+01:52:53,640 --> 01:52:57,760
+ let's take a mean because otherwise the sum gets too large.
+
+1632
+01:52:57,760 --> 01:53:01,600
+ So mean is like a little bit more manageable.
+
+1633
+01:53:01,600 --> 01:53:06,520
+ And then we have a regularization loss here, like say 0.01 times or something like that,
+
+1634
+01:53:06,520 --> 01:53:09,600
+ you can choose the regularization strength.
+
+1635
+01:53:09,600 --> 01:53:12,360
+ And then we can just optimize this.
+
+1636
+01:53:12,360 --> 01:53:16,640
+ And now this optimization actually has two components, not only is it trying to make all
+
+1637
+01:53:16,640 --> 01:53:20,560
+ the probabilities work out, but in addition to that, there's an additional component that
+
+1638
+01:53:20,560 --> 01:53:26,360
+ simultaneously tries to make all w's be zero, because if w's are nonzero, you feel a loss.
+
+1639
+01:53:26,360 --> 01:53:30,880
+ And so minimizing this, the only way to achieve that is for w to be zero.
+
+1640
+01:53:30,880 --> 01:53:36,120
+ And so you can think of this as adding like a spring force or like a gravity force that
+
+1641
+01:53:36,120 --> 01:53:38,040
+ pushes w to be zero.
+
+1642
+01:53:38,040 --> 01:53:42,760
+ So w wants to be zero and the probabilities want to be uniform, but they also simultaneously
+
+1643
+01:53:42,760 --> 01:53:47,680
+ want to match up your probabilities as indicated by the data.
+
+1644
+01:53:47,680 --> 01:53:54,720
+ And so the strength of this realization is exactly controlling the amount of counts that
+
+1645
+01:53:54,720 --> 01:54:05,040
+ you add here, adding a lot more counts here corresponds to increasing this number, because
+
+1646
+01:54:05,040 --> 01:54:09,840
+ the more you increase it, the more this part of the loss function dominates this part.
+
+1647
+01:54:09,840 --> 01:54:16,600
+ And the more these these weights will be unable to grow, because as they grow, they accumulate
+
+1648
+01:54:16,600 --> 01:54:18,640
+ way too much loss.
+
+1649
+01:54:18,640 --> 01:54:25,040
+ And so if this is strong enough, then we are not able to overcome the force of this loss.
+
+1650
+01:54:25,040 --> 01:54:29,600
+ And we will never, and basically everything will be uniform predictions.
+
+1651
+01:54:29,600 --> 01:54:30,880
+ So I thought that's gonna go.
+
+1652
+01:54:30,880 --> 01:54:31,880
+ Okay.
+
+1653
+01:54:31,880 --> 01:54:35,520
+ And lastly, before we wrap up, I wanted to show you how you would sample from this neural
+
+1654
+01:54:35,520 --> 01:54:37,200
+ net model.
+
+1655
+01:54:37,200 --> 01:54:44,640
+ And I copy pasted the sampling code from before, where remember that we sampled five times.
+
+1656
+01:54:44,640 --> 01:54:51,440
+ And all we did, we started zero, we grabbed the current IX row of P, and that was our probability
+
+1657
+01:54:51,440 --> 01:54:59,200
+ row, from which we sampled the next index, and just accumulated that and break when zero.
+
+1658
+01:54:59,200 --> 01:55:04,000
+ And running this gave us these results.
+
+1659
+01:55:04,000 --> 01:55:06,480
+ I still have the P in memory.
+
+1660
+01:55:06,480 --> 01:55:07,760
+ So this is fine.
+
+1661
+01:55:07,760 --> 01:55:14,600
+ Now the speed doesn't come from the row of P. Instead, it comes from this neural net.
+
+1662
+01:55:14,600 --> 01:55:22,680
+ First, we take IX, and we encode it into a one-hot row of X-ink.
+
+1663
+01:55:22,680 --> 01:55:27,920
+ This X-ink multiplies our W, which really just plucks out the row of W corresponding
+
+1664
+01:55:27,920 --> 01:55:28,920
+ to IX.
+
+1665
+01:55:28,920 --> 01:55:30,720
+ Really, that's what's happening.
+
+1666
+01:55:30,720 --> 01:55:32,560
+ And that gets our logits.
+
+1667
+01:55:32,560 --> 01:55:38,040
+ And then we normalize those logits, exponentially to get counts, and then normalize to get the
+
+1668
+01:55:38,040 --> 01:55:39,200
+ distribution.
+
+1669
+01:55:39,200 --> 01:55:41,560
+ And then we can sample from the distribution.
+
+1670
+01:55:41,560 --> 01:55:48,760
+ So if I run this, kind of anti-climatic or climatic, depending how you look at it, but
+
+1671
+01:55:48,760 --> 01:55:52,480
+ we get the exact same result.
+
+1672
+01:55:52,480 --> 01:55:54,880
+ And that's because this is the identical model.
+
+1673
+01:55:54,880 --> 01:56:00,040
+ Not only does it achieve the same loss, but as I mentioned, these are identical models,
+
+1674
+01:56:00,040 --> 01:56:04,440
+ and this W is the log counts of what we've estimated before.
+
+1675
+01:56:04,440 --> 01:56:09,680
+ But we came to this answer in a very different way, and it's got a very different interpretation.
+
+1676
+01:56:09,680 --> 01:56:13,360
+ But fundamentally, this is basically the same model and gets the same samples here.
+
+1677
+01:56:13,360 --> 01:56:15,720
+ And so that's kind of cool.
+
+1678
+01:56:15,720 --> 01:56:18,200
+ Okay, so we've actually covered a lot of ground.
+
+1679
+01:56:18,200 --> 01:56:22,160
+ We introduced the Bigram character-level language model.
+
+1680
+01:56:22,160 --> 01:56:26,000
+ We saw how we can train the model, how we can sample from the model, and how we can
+
+1681
+01:56:26,000 --> 01:56:30,440
+ evaluate the quality of the model using the negative log likelihood loss.
+
+1682
+01:56:30,440 --> 01:56:33,800
+ And then we actually trained the model in two completely different ways that actually
+
+1683
+01:56:33,800 --> 01:56:36,480
+ get the same result and the same model.
+
+1684
+01:56:36,480 --> 01:56:41,640
+ In the first way, we just counted up the frequency of all the Bigrams and normalized.
+
+1685
+01:56:41,640 --> 01:56:48,560
+ In the second way, we used the negative log likelihood loss as a guide to optimizing
+
+1686
+01:56:48,560 --> 01:56:55,040
+ the counts matrix or the counts array so that the loss is minimized in the gradient-based
+
+1687
+01:56:55,040 --> 01:56:56,040
+ framework.
+
+1688
+01:56:56,040 --> 01:57:01,600
+ And we saw that both of them give the same result, and that's it.
+
+1689
+01:57:01,600 --> 01:57:05,160
+ Now the second one of these, the gradient-based framework, is much more flexible.
+
+1690
+01:57:05,160 --> 01:57:07,760
+ And right now, our neural net part is super simple.
+
+1691
+01:57:07,760 --> 01:57:11,920
+ We're taking a single previous character, and we're taking it through a single linear
+
+1692
+01:57:11,920 --> 01:57:14,320
+ layer to calculate the logits.
+
+1693
+01:57:14,320 --> 01:57:16,080
+ This is about to complexify.
+
+1694
+01:57:16,080 --> 01:57:20,800
+ So in the follow-up videos, we're going to be taking more and more of these characters,
+
+1695
+01:57:20,800 --> 01:57:23,120
+ and we're going to be feeding them into a neural net.
+
+1696
+01:57:23,120 --> 01:57:25,480
+ But this neural net will still output the exact same thing.
+
+1697
+01:57:25,480 --> 01:57:28,280
+ The neural net will output logits.
+
+1698
+01:57:28,280 --> 01:57:31,600
+ And these logits will still be normalized in the exact same way, and all the loss and
+
+1699
+01:57:31,600 --> 01:57:35,640
+ everything else in the gradient-based framework, everything stays identical.
+
+1700
+01:57:35,640 --> 01:57:40,680
+ It's just that this neural net will now complexify all the way to transformers.
+
+1701
+01:57:40,680 --> 01:57:43,600
+ So that's going to be pretty awesome, and I'm looking forward to it.
+
+1702
+01:57:43,600 --> 01:57:44,240
+ For now, bye.
+
